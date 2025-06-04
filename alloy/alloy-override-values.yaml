@@ -1,0 +1,166 @@
+# -- Overrides the chart's namespace.
+namespaceOverride: null
+
+crds:
+  # -- Whether to install CRDs for monitoring.
+  create: true
+
+## Various Alloy settings. For backwards compatibility with the grafana-agent
+## chart, this field may also be called "agent". Naming this field "agent" is
+## deprecated and will be removed in a future release.
+alloy:
+  configMap:
+    # -- Create a new ConfigMap for the config file.
+    create: false
+    # -- Content to assign to the new ConfigMap.  This is passed into `tpl` allowing for templating from values.
+    content: ''
+
+    # -- Name of existing ConfigMap to use. Used when create is false.
+    name: alloy-config
+    # -- Key in ConfigMap to get config from.
+    key: config.alloy
+
+  mounts:
+    # -- Mount /var/log from the host into the container for log collection.
+    varlog: true
+    # -- Mount /var/lib/docker/containers from the host into the container for log
+    # collection.
+    dockercontainers: true
+
+    # -- Extra volume mounts to add into the Grafana Alloy container. Does not
+    # affect the watch container.
+    extra: []
+
+  # -- Security context to apply to the Grafana Alloy container.
+  securityContext: {}
+
+  # -- Resource requests and limits to apply to the Grafana Alloy container.
+  resources: {}
+
+  # -- Set lifecycle hooks for the Grafana Alloy container.
+  lifecycle: {}
+    # preStop:
+    #   exec:
+    #     command:
+    #     - /bin/sleep
+    #     - "10"
+
+  # -- Set livenessProbe for the Grafana Alloy container.
+  livenessProbe: {}
+
+image:
+  # -- Grafana Alloy image registry (defaults to docker.io)
+  registry: "docker.io"
+  # -- Grafana Alloy image repository.
+  repository: grafana/alloy
+  # -- (string) Grafana Alloy image tag. When empty, the Chart's appVersion is
+  # used.
+  tag: null
+  # -- Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`.
+  digest: null
+  # -- Grafana Alloy image pull policy.
+  pullPolicy: IfNotPresent
+  # -- Optional set of image pull secrets.
+  pullSecrets: []
+
+rbac:
+  # -- Whether to create RBAC resources for Alloy.
+  create: true
+
+serviceAccount:
+  # -- Whether to create a service account for the Grafana Alloy deployment.
+  create: true
+  # -- Additional labels to add to the created service account.
+  additionalLabels: {}
+  # -- Annotations to add to the created service account.
+  annotations: {}
+  # -- The name of the existing service account to use when
+  # serviceAccount.create is false.
+  name: null
+  # Whether the Alloy pod should automatically mount the service account token.
+  automountServiceAccountToken: true
+
+# Options for the extra controller used for config reloading.
+configReloader:
+  # -- Enables automatically reloading when the Alloy config changes.
+  enabled: true
+  image:
+    # -- Config reloader image registry (defaults to docker.io)
+    registry: "quay.io"
+    # -- Repository to get config reloader image from.
+    repository: prometheus-operator/prometheus-config-reloader
+    # -- Tag of image to use for config reloading.
+    tag: v0.81.0
+    # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
+    digest: ""
+  # -- Override the args passed to the container.
+  customArgs: []
+  # -- Resource requests and limits to apply to the config reloader container.
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "50Mi"
+  # -- Security context to apply to the Grafana configReloader container.
+  securityContext: {}
+
+controller:
+  # -- Type of controller to use for deploying Grafana Alloy in the cluster.
+  # Must be one of 'daemonset', 'deployment', or 'statefulset'.
+  type: 'daemonset'
+
+  # -- Number of pods to deploy. Ignored when controller.type is 'daemonset'.
+  replicas: 1
+
+  # -- Annotations to add to controller.
+  extraAnnotations: {}
+
+  # -- Whether to deploy pods in parallel. Only used when controller.type is
+  # 'statefulset'.
+  parallelRollout: true
+
+  volumes:
+    # -- Extra volumes to add to the Grafana Alloy pod.
+    extra: []
+
+  # -- Additional containers to run alongside the Alloy container and initContainers.
+  extraContainers: []
+
+service:
+  # -- Creates a Service for the controller's pods.
+  enabled: true
+  # -- Service type
+  type: ClusterIP
+  # -- NodePort port. Only takes effect when `service.type: NodePort`
+  nodePort: 31128
+  # -- Cluster IP, can be set to None, empty "" or an IP address
+  clusterIP: ''
+  # -- Value for internal traffic policy. 'Cluster' or 'Local'
+  internalTrafficPolicy: Cluster
+  annotations: {}
+    # cloud.google.com/load-balancer-type: Internal
+
+serviceMonitor:
+  enabled: true
+  # -- Additional labels for the service monitor.
+  additionalLabels: {}
+  # -- Scrape interval. If not set, the Prometheus default scrape interval is used.
+  interval: ""
+  # -- MetricRelabelConfigs to apply to samples after scraping, but before ingestion.
+  # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig
+  metricRelabelings: []
+  # - action: keep
+  #   regex: 'kube_(daemonset|deployment|pod|namespace|node|statefulset).+'
+  #   sourceLabels: [__name__]
+
+  # -- Customize tls parameters for the service monitor
+  tlsConfig: {}
+
+  # -- RelabelConfigs to apply to samples before scraping
+  # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig
+  relabelings: []
+  # - sourceLabels: [__meta_kubernetes_pod_node_name]
+  #   separator: ;
+  #   regex: ^(.*)$
+  #   targetLabel: nodename
+  #   replacement: $1
+  #   action: replace

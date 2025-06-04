@@ -1,0 +1,152 @@
+  apiVersion: v1
+  data:
+    config.alloy: |
+       discovery.kubernetes "pods" {
+         role = "pod"
+       }
+
+       discovery.relabel "pod_logs" {
+         targets = discovery.kubernetes.pods.targets
+      
+        // Label creation - "namespace" field from "__meta_kubernetes_namespace"
+         rule {
+           source_labels = ["__meta_kubernetes_namespace"]
+           target_label  = "namespace"
+         }
+        // Label creation - "pod" field from "__meta_kubernetes_pod_name"
+         rule {
+           source_labels = ["__meta_kubernetes_pod_name"]
+           target_label  = "pod"
+         }
+        // Label creation - "container" field from "__meta_kubernetes_pod_container_name"
+         rule {
+           source_labels = ["__meta_kubernetes_pod_container_name"]
+           target_label  = "container"
+         }
+        // Label creation -  "app" field from "__meta_kubernetes_pod_label_app_kubernetes_io_name"
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          action = "replace"
+          target_label = "app"
+        }
+         rule {
+           source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_name"]
+           separator     = "/"
+           target_label  = "job"
+         }
+        //  Label creation - "container" field from "__meta_kubernetes_pod_uid" and "__meta_kubernetes_pod_container_name"
+        //  Concatenate values __meta_kubernetes_pod_uid/__meta_kubernetes_pod_container_name.log
+         rule {
+           source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+           separator     = "/"
+           action        = "replace"
+           replacement   = "/var/log/pods/*$1/*.log"
+           target_label  = "__path__"
+         }
+        // Label creation -  "container_runtime" field from "__meta_kubernetes_pod_container_id"
+         rule {
+           action = "replace"
+           source_labels = ["__meta_kubernetes_pod_container_id"]
+           regex = "^(\\w+):\\/\\/.+$"
+           replacement = "$1"
+           target_label = "tmp_container_runtime"
+         }
+       }
+
+       local.file_match "pod_logs" {
+         path_targets = discovery.relabel.pod_logs.output
+       }
+
+       loki.source.kubernetes "pod_logs" {
+         targets    = discovery.relabel.pod_logs.output
+         forward_to = [loki.process.pod_logs.receiver]
+       }
+
+       loki.source.file "pod_logs" {
+         targets    = local.file_match.pod_logs.targets
+         forward_to = [loki.process.pod_logs.receiver]
+       }
+
+       loki.process "pod_logs" {
+          stage.tenant {
+            label = "namespace"
+            // Optional: Set a default tenant ID if 'namespace' label is missing or empty
+            // value = "default-tenant"
+          }
+          stage.static_labels {
+            values = {
+              cluster = "MillenniumFalcon",
+             }
+            }
+         stage.match {
+           selector = "{namespace=~\"(ngin|ngim)x\"}"
+           stage.regex {
+             expression = "(?P<method>GET|PUT|DELETE|POST)"
+           }
+           stage.regex {
+             expression = "(?P<status_code_with_http_version>HTTP.{6}\\d{3})"
+           }
+           stage.regex {
+             expression = "(?P<status_code>\\d{3})"
+             source = "status_code_with_http_version"
+           }
+           stage.labels {
+             values = {
+               method = "",
+               status_code = "",
+             }
+           }
+         }
+         stage.match {
+           selector = "{tmp_container_runtime=\"containerd\"}"
+           stage.cri {}
+           stage.labels {
+             values = {
+               flags   = "",
+               stream  = "",
+             }
+           }
+         }
+         stage.match {
+           selector = "{tmp_container_runtime=\"docker\"}"
+           stage.docker {}
+           stage.labels {
+             values = {
+               stream  = "",
+             }
+           }
+         }
+         stage.label_drop {
+           values = ["tmp_container_runtime"]
+         }
+
+         forward_to = [loki.write.loki.receiver]
+       }
+       loki.write "loki" {
+        endpoint {
+          url = "http://loki-nginx.loki.svc.cluster.local:3100/loki/api/v1/push"
+
+          headers = {
+            Authorization = "Basic bG9raS1jYW5hcnk6bG9raS1jYW5hcnk=",
+          }
+        }
+       }
+
+  kind: ConfigMap
+  metadata:
+    name: alloy-config
+    namespace: alloy-logs
+
+
+
+  # kubectl create namespace alloy-logs
+
+  # kubectl apply -f alloy-logs-configMap.yml
+
+  # helm repo add grafana https:grafana.github.io/helm-charts
+  # helm repo update
+
+  # helm upgrade --install grafana-alloy grafana/alloy -f alloy-override-values.yaml --namespace alloy-logs
+
+  # kubectl get pods -n alloy-logs -l app.kubernetes.io/name=grafana-alloy
+  # kubectl logs -n alloy-logs -l app.kubernetes.io/name=grafana-alloy --tail=100

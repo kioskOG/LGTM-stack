@@ -1,0 +1,188 @@
+apiVersion: v1
+data:
+  config.alloy: |
+    // Discover all pods in the cluster.
+    // For production, consider adding 'selectors' to limit discovery to specific namespaces
+    // or pods if you don't want to collect logs from everything.
+    discovery.kubernetes "pods" {
+      role = "pod"
+      // Example: Only discover pods in 'default' and 'my-app' namespaces
+      // selectors {
+      //   field = "metadata.namespace"
+      //   value = "default|my-app"
+      // }
+    }
+
+    // Relabeling rules for discovered pods to extract useful labels for Loki.
+    discovery.relabel "pod_logs_relabel" {
+      targets = discovery.kubernetes.pods.targets
+
+      // Add 'namespace' label
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      // Add 'pod' label
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+      // Add 'container' label
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+      // Add 'app' label from common Kubernetes labels
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+        action        = "replace"
+        target_label  = "app"
+      }
+      // Add 'job' label (namespace/pod-name)
+      rule {
+        source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_name"]
+        separator     = "/"
+        target_label  = "job"
+      }
+      // Add 'cluster' label (CRITICAL for multi-cluster setups)
+      // Replace 'your-cluster-name' with the actual name of your Kubernetes cluster.
+      rule {
+        target_label = "cluster"
+        replacement  = "MillenniumFalcon"
+        // MillenniumFalcon is your cluster name
+      }
+      // Add 'node' label (useful for node-specific troubleshooting)
+      rule {
+        source_labels = ["__meta_kubernetes_node_name"]
+        target_label  = "node"
+      }
+
+      // Generate the __path__ to the log file on the host.
+      rule {
+        source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+        separator     = "/"
+        action        = "replace"
+        replacement   = "/var/log/pods/*$1/*.log"
+        target_label  = "__path__"
+      }
+      // Extract container runtime (docker/containerd) for later processing.
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_pod_container_id"]
+        regex         = "^(\\w+):\\/\\/.+$"
+        replacement   = "$1"
+        target_label  = "tmp_container_runtime"
+      }
+
+      // OPTIONAL: Drop logs from specific namespaces (e.g., system namespaces)
+      // Uncomment and customize if you want to exclude certain logs.
+      // rule {
+      //   source_labels = ["namespace"]
+      //   regex         = "kube-system|kube-public|monitoring|alloy-logs" // Add any namespaces to exclude
+      //   action        = "drop"
+      // }
+    }
+
+    // Match the log files on the host filesystem based on the relabeled targets.
+    local.file_match "pod_logs_files" {
+      path_targets = discovery.relabel.pod_logs_relabel.output
+    }
+
+    // Source logs from the matched files.
+    loki.source.file "pod_logs_source" {
+      targets    = local.file_match.pod_logs_files.targets
+      forward_to = [loki.process.pod_logs_pipeline.receiver]
+    }
+
+    // Process log lines, extract labels, and transform log content.
+    loki.process "pod_logs_pipeline" {
+      stage.tenant {
+        label = "namespace"
+        // Optional: Set a default tenant ID if 'namespace' label is missing or empty
+        // value = "default-tenant"
+        }
+
+      // Stage for Nginx/Ingress logs (example)
+      stage.match {
+        selector = "{namespace=~\"(ngin|ngim)x\"}" // Matches namespaces like 'nginx' or 'ngimx'
+        stage.regex {
+          expression = "(?P<method>GET|PUT|DELETE|POST)"
+        }
+        stage.regex {
+          expression = "(?P<status_code_with_http_version>HTTP.{6}\\d{3})"
+        }
+        stage.regex {
+          expression = "(?P<status_code>\\d{3})"
+          source     = "status_code_with_http_version"
+        }
+        stage.labels {
+          values = {
+            method      = "",
+            status_code = "",
+          }
+        }
+        // Optional: Drop logs that don't match the regex if they are not useful
+        // stage.drop {
+        //   drop_counter = "nginx_unmatched_logs_total"
+        // }
+      }
+
+      // Stage for containerd runtime logs
+      stage.match {
+        selector = "{tmp_container_runtime=\"containerd\"}"
+        stage.cri {} // Parses CRI log format
+        stage.labels {
+          values = {
+            flags  = "",
+            stream = "", // 'stream' (stdout/stderr) is extracted by cri stage
+          }
+        }
+      }
+
+      // Stage for Docker runtime logs
+      stage.match {
+        selector = "{tmp_container_runtime=\"docker\"}"
+        stage.docker {} // Parses Docker log format
+        stage.labels {
+          values = {
+            stream = "", // 'stream' (stdout/stderr) is extracted by docker stage
+          }
+        }
+      }
+
+      // Drop the temporary container runtime label after processing
+      stage.label_drop {
+        values = ["tmp_container_runtime"]
+      }
+
+      // Forward processed logs to the Loki write component.
+      forward_to = [loki.write.loki_remote.receiver]
+    }
+
+    // Write logs to the central Loki instance.
+    loki.write "loki_remote" {
+      endpoint {
+        // CRITICAL: Use HTTPS in production for encrypted communication.
+        // Ensure your Loki gateway supports HTTPS and has a valid certificate.
+        url = "http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push"
+
+        // Headers for authentication and multi-tenancy.
+        headers = {
+          "Authorization" = "Basic bG9raS1jYW5hcnk6bG9raS1jYW5hcnk=", // Your base64 encoded credentials
+          // "X-Scope-OrgID" = "tenant1", // Your specific tenant ID for Loki
+        }
+
+        // TLS configuration if using HTTPS and custom CAs or client certificates.
+        // Uncomment and configure if your Loki endpoint uses custom TLS.
+        // tls_config {
+        //   ca_file           = "/etc/alloy/certs/ca.crt" // Path to CA certificate within the Alloy pod
+        //   cert_file         = "/etc/alloy/certs/client.crt" // Path to client certificate
+        //   key_file          = "/etc/alloy/certs/client.key" // Path to client key
+        //   insecure_skip_verify = false // Set to true ONLY for testing, NEVER in production
+        // }
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: alloy-logs
