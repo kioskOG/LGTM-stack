@@ -57,27 +57,17 @@
          path_targets = discovery.relabel.pod_logs.output
        }
 
-       loki.source.kubernetes "pod_logs" {
-         targets    = discovery.relabel.pod_logs.output
-         forward_to = [loki.process.pod_logs.receiver]
-       }
-
        loki.source.file "pod_logs" {
          targets    = local.file_match.pod_logs.targets
          forward_to = [loki.process.pod_logs.receiver]
        }
 
        loki.process "pod_logs" {
-          stage.tenant {
+         stage.tenant {
             label = "namespace"
             // Optional: Set a default tenant ID if 'namespace' label is missing or empty
             // value = "default-tenant"
           }
-          stage.static_labels {
-            values = {
-              cluster = "MillenniumFalcon",
-             }
-            }
          stage.match {
            selector = "{namespace=~\"(ngin|ngim)x\"}"
            stage.regex {
