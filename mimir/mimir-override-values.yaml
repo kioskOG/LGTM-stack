@@ -1,0 +1,428 @@
+# These values configure the Grafana Mimir or Grafana Enterprise Metrics cluster
+# for a more production-ready setup. The setup targets 70% CPU and memory utilization
+# so that the cluster has room to grow. The resource requests reflect 70% utilization
+# and the limits reflect 100% utilization. The values do not set CPU limits,
+# because CPU limits have caused severe issues elsewhere, so we don't apply any in our helm chart:
+# see https://engineering.indeedblog.com/blog/2019/12/unthrottled-fixing-cpu-limits-in-the-cloud/
+# If you require CPU limits for billing purposes see capped-large.yaml
+#
+# These values are suitable for ingestion of ~10M series and scrape interval of 15s.
+# This implies ingestion rate of around 660000 samples per second.
+#
+# Query requirements can vary dramatically depending on query rate and query
+# ranges. The values here satisfy a "usual" query load of around 50 queries per second
+# as seen from our production clusters at this scale.
+#
+# The values in this file also add podAntiAffinity rules for ingesters and store-gateways.
+# The rules ensure that the replicas of the same component are not scheduled on the same
+# Kubernetes Node. Zone-aware replication is enabled by default on new installation.
+# Refer to [Migrate from single zone to zone-aware replication with Helm](https://grafana.com/docs/mimir/latest/migration-guide/migrating-from-single-zone-with-helm) and
+# [Zone-Aware Replication](https://grafana.com/docs/mimir/latest/configure/configure-zone-aware-replication/)
+# for more information.
+#
+# MinIO is no longer enabled, and you are encouraged to use your cloud providers
+# object storage service such as S3 or GCS.
+
+# Contains values for production use for ingestion up to approximately ten million series.
+
+# image:
+#   # -- Grafana Mimir container image repository. Note: for Grafana Enterprise Metrics use the value 'enterprise.image.repository'
+#   repository: grafana/mimir
+#   # -- Grafana Mimir container image tag. Note: for Grafana Enterprise Metrics use the value 'enterprise.image.tag'
+#   tag: r343-b21e239
+#   # -- Container pull policy - shared between Grafana Mimir and Grafana Enterprise Metrics
+#   pullPolicy: IfNotPresent
+
+
+alertmanager:
+  statefulSet:
+    enabled: true
+  persistentVolume:
+    enabled: true
+    size: 1Gi
+    enableRetentionPolicy: false
+    whenDeleted: Retain
+    whenScaled: Retain
+    accessModes:
+      - ReadWriteOnce
+  replicas: 1 #3
+  resources:
+    limits:
+      memory: 1.4Gi
+    requests:
+      cpu: 500m #1
+      memory: 500Mi #1Gi
+
+compactor:
+  enabled: true
+  replicas: 1
+  persistentVolume:
+    enabled: true
+    size: 5Gi #50Gi
+    accessModes:
+      - ReadWriteOnce
+    enableRetentionPolicy: false
+    whenDeleted: Retain
+    whenScaled: Retain
+  resources:
+    limits:
+      memory: 2Gi #2.8Gi
+    requests:
+      cpu: 500m #1
+      memory: 500Mi #2Gi
+
+distributor:
+  podDisruptionBudget:
+    maxUnavailable: 1
+  replicas: 1 #12
+  resources:
+    limits:
+      memory: 1Gi #5.7Gi
+    requests:
+      cpu: 1 #2
+      memory: 1Gi #4Gi
+
+ingester:
+  enabled: true
+  replicas: 2
+  zoneAwareReplication:
+    enabled: false
+  statefulSet:
+    enabled: true
+  podDisruptionBudget:
+    maxUnavailable: 1
+  persistentVolume:
+    enabled: true
+    size: 5Gi #50Gi
+    name: storage
+    accessModes:
+      - ReadWriteOnce
+    enableRetentionPolicy: false
+    whenDeleted: Retain
+    whenScaled: Retain
+  # replicas: 2 #27
+  resources:
+    limits:
+      memory: 2Gi #12Gi
+    requests:
+      cpu: 500m #3.5
+      memory: 1Gi #8Gi
+  topologySpreadConstraints: {}
+  # affinity:
+  #   podAntiAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       - labelSelector:
+  #           matchExpressions:
+  #             - key: target # support for enterprise.legacyLabels
+  #               operator: In
+  #               values:
+  #                 - ingester
+  #         topologyKey: 'kubernetes.io/hostname'
+
+  #       - labelSelector:
+  #           matchExpressions:
+  #             - key: app.kubernetes.io/component
+  #               operator: In
+  #               values:
+  #                 - ingester
+  #         topologyKey: 'kubernetes.io/hostname'
+
+  # zoneAwareReplication:
+  #   topologyKey: 'kubernetes.io/hostname'
+
+admin-cache:
+  enabled: false
+  replicas: 1 #3
+
+chunks-cache:
+  enabled: true
+  replicas: 1 #3
+  batchSize: 4
+  parallelism: 5
+  timeout: 2000ms
+  defaultValidity: 0s
+  port: 11211
+  # -- Amount of memory allocated to chunks-cache for object storage (in MB).
+  allocatedMemory: 512 #8192  # resources limit & request of memcached object is calculated using allocatedMemory * 1.2
+  # -- Maximum item memory for chunks-cache (in MB).
+  maxItemMemory: 5
+  # -- Maximum number of connections allowed
+  connectionLimit: 16384
+
+query_scheduler:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # podDisruptionBudget:
+  #   maxUnavailable: 1
+
+index-cache:
+  enabled: false
+  replicas: 1 #3
+
+metadata-cache:
+  enabled: false
+  replicas: 1 #3
+
+results-cache:
+  enabled: false
+  replicas: 1 #3
+  allocatedMemory: 512
+
+minio:
+  enabled: false
+
+overrides_exporter:
+  replicas: 1
+  podDisruptionBudget:
+    maxUnavailable: 1
+  resources:
+    limits:
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+querier:
+  replicas: 1 #4
+  resources:
+    limits:
+      memory: 1Gi #8.5Gi
+    requests:
+      cpu: 500m #2
+      memory: 500Mi #6Gi
+
+query_frontend:
+  enabled: true
+  replicas: 1 #3
+  podDisruptionBudget:
+    maxUnavailable: 1
+  resources:
+    limits:
+      memory: 2.8Gi
+    requests:
+      cpu: 500m #2
+      memory: 500Mi #2Gi
+
+ruler:
+  replicas: 1 #3
+  podDisruptionBudget:
+    maxUnavailable: 1
+  resources:
+    limits:
+      memory: 2Gi #5.7Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi #4Gi
+
+store_gateway:
+  persistentVolume:
+    size: 5Gi #50Gi
+  replicas: 1 #6
+  resources:
+    limits:
+      memory: 1Gi #8.5Gi
+    requests:
+      cpu: 1 #1
+      memory: 900Mi #6Gi
+  topologySpreadConstraints: {}
+  # affinity:
+  #   podAntiAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       - labelSelector:
+  #           matchExpressions:
+  #             - key: target # support for enterprise.legacyLabels
+  #               operator: In
+  #               values:
+  #                 - store-gateway
+  #         topologyKey: 'kubernetes.io/hostname'
+
+  #       - labelSelector:
+  #           matchExpressions:
+  #             - key: app.kubernetes.io/component
+  #               operator: In
+  #               values:
+  #                 - store-gateway
+  #         topologyKey: 'kubernetes.io/hostname'
+  zoneAwareReplication: 
+    enabled: false
+  # zoneAwareReplication:
+  #   topologyKey: 'kubernetes.io/hostname'
+
+nginx:
+  replicas: 1 #3
+  resources:
+    limits:
+      memory: 731Mi
+    requests:
+      cpu: 500m #1
+      memory: 512Mi
+
+# Grafana Enterprise Metrics feature related
+admin_api:
+  enabled: false
+  replicas: 1 #2
+  resources:
+    limits:
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+
+gateway:
+  replicas: 1 #3
+  resources:
+    limits:
+      memory: 731Mi
+    requests:
+      cpu: 500m #1
+      memory: 512Mi
+
+serviceAccount:
+ create: true
+ name: mimir
+ annotations:
+   "eks.amazonaws.com/role-arn": "arn:aws:iam::547580490325:role/MimirServiceAccountRole" # The service role you created
+
+# Source: mimir-distributed/templates/mimir-config.yaml
+mimir:
+  structuredConfig:
+    common:
+      storage:
+        backend: s3
+        s3:
+          endpoint: s3.eu-central-1.amazonaws.com
+          region: eu-central-1
+          insecure: false
+    usage_stats:
+      enabled: false
+      installation_mode: helm
+    activity_tracker:
+      filepath: /active-query-tracker/activity.log
+    alertmanager:
+      data_dir: /data
+      enable_api: true
+      external_url: /alertmanager
+    alertmanager_storage:
+      s3:
+        # access_key_id: ${AWS_ACCESS_KEY_ID}
+        bucket_name: bellatrix-loki-ruler
+        endpoint: s3.eu-central-1.amazonaws.com
+        # region: eu-central-1
+        insecure: false
+        # secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+    blocks_storage:
+      s3:
+        # access_key_id: ${AWS_ACCESS_KEY_ID}
+        bucket_name: bellatrix-loki-chunk
+        # endpoint: s3.eu-central-1.amazonaws.com
+        # region: eu-central-1
+        # insecure: false
+        # secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+      bucket_store:
+        sync_dir: /data/tsdb-sync
+      tsdb:
+        dir: /data/tsdb
+        head_compaction_interval: 15m
+        wal_replay_concurrency: 3
+    compactor:
+      compaction_interval: 30m
+      deletion_delay: 2h
+      max_closing_blocks_concurrency: 2
+      max_opening_blocks_concurrency: 4
+      symbols_flushers_concurrency: 4
+      first_level_compaction_wait_period: 25m
+      data_dir: "/data"
+      sharding_ring:
+        wait_stability_min_duration: 1m
+        heartbeat_period: 1m
+        heartbeat_timeout: 4m
+    distributor:
+      ring:
+        heartbeat_period: 1m
+        heartbeat_timeout: 4m
+    frontend:
+      parallelize_shardable_queries: true
+    frontend_worker:
+    # frontend address and scheduler address are mutually exclusive
+    #     You cannot configure both:
+    # frontend_worker.frontend_address
+    # frontend_worker.scheduler_address
+      scheduler_address: mimir-query-scheduler-headless.mimir.svc:9095
+      grpc_client_config:
+        max_send_msg_size: 419430400 # 400MiB
+    ingester:
+      ring:
+        final_sleep: 0s
+        num_tokens: 512
+        unregister_on_shutdown: false
+        tokens_file_path: /data/tokens
+        heartbeat_period: 2m
+        heartbeat_timeout: 10m
+        # {{- if .Values.ingester.zoneAwareReplication.enabled }}
+        # zone_awareness_enabled: true
+        # {{- end }}
+    ingester_client:
+      grpc_client_config:
+        max_recv_msg_size: 104857600
+        max_send_msg_size: 104857600
+    limits: {}
+    memberlist:
+      abort_if_cluster_join_fails: false
+      compression_enabled: false
+      join_members:
+      - dns+mimir-gossip-ring.mimir.svc.cluster.local:7946
+    ruler:
+      alertmanager_url: dnssrvnoa+http://_http-metrics._tcp.mimir-alertmanager-headless.test.svc.cluster.local/alertmanager
+      enable_api: true
+      rule_path: /data
+    querier:
+      max_concurrent: 16
+    ruler_storage:
+      s3:
+        # access_key_id: ${AWS_ACCESS_KEY_ID}
+        bucket_name: bellatrix-loki-ruler
+        endpoint: s3.eu-central-1.amazonaws.com
+        # region: eu-central-1
+        insecure: false
+        # secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+    runtime_config:
+      file: /var/mimir/runtime.yaml
+    server:
+      grpc_server_max_concurrent_streams: 1000
+    multitenancy_enabled: false
+
+
+
+
+
+
+
+
+
+# helm upgrade --install mimir grafana/mimir-distributed -n mimir -f ../mimir/mimir-override-values.yaml
+
+# Release "mimir" does not exist. Installing it now.
+# W0606 16:26:51.391720   34621 warnings.go:70] spec.template.spec.containers[0].resources.limits[memory]: fractional byte value "3006477107200m" is invalid, must be an integer
+# W0606 16:26:51.666826   34621 warnings.go:70] spec.template.spec.containers[0].resources.limits[memory]: fractional byte value "1503238553600m" is invalid, must be an integer
+# NAME: mimir
+# LAST DEPLOYED: Fri Jun  6 16:26:33 2025
+# NAMESPACE: mimir
+# STATUS: deployed
+# REVISION: 1
+# NOTES:
+# Welcome to Grafana Mimir!
+# Remote write endpoints for Prometheus or Grafana Agent:
+# Ingress is not enabled, see the nginx.ingress values.
+# From inside the cluster:
+#   http://mimir-nginx.mimir.svc:80/api/v1/push
+
+# Read address, Grafana data source (Prometheus) URL:
+# Ingress is not enabled, see the nginx.ingress values.
+# From inside the cluster:
+#   http://mimir-nginx.mimir.svc:80/prometheus
+
+# **IMPORTANT**: Always consult CHANGELOG.md file at https://github.com/grafana/mimir/blob/main/operations/helm/charts/mimir-distributed/CHANGELOG.md and the deprecation list there to learn about breaking changes that require action during upgrade.
