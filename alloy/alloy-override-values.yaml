@@ -164,3 +164,6 @@ serviceMonitor:
   #   targetLabel: nodename
   #   replacement: $1
   #   action: replace
+
+
+# helm upgrade --install grafana-alloy grafana/alloy -f alloy-override-values.yaml --namespace alloy-logs
