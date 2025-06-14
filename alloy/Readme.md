@@ -7,3 +7,19 @@ How it works:
 * prometheus.scrape "node_exporter_scrape": This block tells the Alloy agent to scrape its own internal Node Exporter endpoint (or the endpoint of other Alloy pods, if configured for distributed scraping) and then forward those metrics.
 
 * prometheus.remote_write "central_prometheus": This block then sends the scraped metrics to your central Prometheus/Mimir/Thanos instance.
+
+
+
+
+
+# kubectl create namespace alloy-logs
+
+# kubectl apply -f alloy-logs-configMap.yml
+
+# helm repo add grafana https:grafana.github.io/helm-charts
+# helm repo update
+
+# helm upgrade --install grafana-alloy grafana/alloy -f alloy-override-values.yaml --namespace alloy-logs
+
+# kubectl get pods -n alloy-logs -l app.kubernetes.io/name=grafana-alloy
+# kubectl logs -n alloy-logs -l app.kubernetes.io/name=grafana-alloy --tail=100

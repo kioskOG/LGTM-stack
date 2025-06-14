@@ -1,131 +1,451 @@
-  apiVersion: v1
-  data:
-    config.alloy: |
-       discovery.kubernetes "pods" {
-         role = "pod"
-       }
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: alloy-logs
+data:
+  config.alloy: |
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
 
-       discovery.relabel "pod_logs" {
-         targets = discovery.kubernetes.pods.targets
-      
-        // Label creation - "namespace" field from "__meta_kubernetes_namespace"
-         rule {
-           source_labels = ["__meta_kubernetes_namespace"]
-           target_label  = "namespace"
-         }
-        // Label creation - "pod" field from "__meta_kubernetes_pod_name"
-         rule {
-           source_labels = ["__meta_kubernetes_pod_name"]
-           target_label  = "pod"
-         }
-        // Label creation - "container" field from "__meta_kubernetes_pod_container_name"
-         rule {
-           source_labels = ["__meta_kubernetes_pod_container_name"]
-           target_label  = "container"
-         }
-        // Label creation -  "app" field from "__meta_kubernetes_pod_label_app_kubernetes_io_name"
-        rule {
-          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
-          action = "replace"
-          target_label = "app"
+    discovery.relabel "pod_logs" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+        action        = "replace"
+        target_label  = "app"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_name"]
+        separator     = "/"
+        target_label  = "job"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_node_name"]
+        target_label  = "node"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+        separator     = "/"
+        action        = "replace"
+        replacement   = "/var/log/pods/*$1/*.log"
+        target_label  = "__path__"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_pod_container_id"]
+        regex         = "^(\\\\w+):\\/\\/.+$"
+        replacement   = "$1"
+        target_label  = "tmp_container_runtime"
+      }
+    }
+
+    local.file_match "pod_logs" {
+      path_targets = discovery.relabel.pod_logs.output
+    }
+
+    loki.source.file "pod_logs" {
+      targets    = local.file_match.pod_logs.targets
+      forward_to = [loki.process.pod_logs.receiver]
+    }
+
+    loki.source.kubernetes_events "cluster_events" {
+      job_name   = "integrations/kubernetes/eventhandler"
+      log_format = "logfmt"
+      forward_to = [loki.process.cluster_events.receiver]
+    }
+
+    loki.process "pod_logs" {
+      stage.static_labels {
+        values = {
+          cluster = "MillenniumFalcon",
         }
-         rule {
-           source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_name"]
-           separator     = "/"
-           target_label  = "job"
-         }
-        //  Label creation - "container" field from "__meta_kubernetes_pod_uid" and "__meta_kubernetes_pod_container_name"
-        //  Concatenate values __meta_kubernetes_pod_uid/__meta_kubernetes_pod_container_name.log
-         rule {
-           source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
-           separator     = "/"
-           action        = "replace"
-           replacement   = "/var/log/pods/*$1/*.log"
-           target_label  = "__path__"
-         }
-        // Label creation -  "container_runtime" field from "__meta_kubernetes_pod_container_id"
-         rule {
-           action = "replace"
-           source_labels = ["__meta_kubernetes_pod_container_id"]
-           regex = "^(\\w+):\\/\\/.+$"
-           replacement = "$1"
-           target_label = "tmp_container_runtime"
-         }
-       }
+      }
 
-       local.file_match "pod_logs" {
-         path_targets = discovery.relabel.pod_logs.output
-       }
-
-       loki.source.file "pod_logs" {
-         targets    = local.file_match.pod_logs.targets
-         forward_to = [loki.process.pod_logs.receiver]
-       }
-
-       loki.process "pod_logs" {
-         stage.tenant {
-            label = "namespace"
-            // Optional: Set a default tenant ID if 'namespace' label is missing or empty
-            // value = "default-tenant"
-          }
-         stage.match {
-           selector = "{namespace=~\"(ngin|ngim)x\"}"
-           stage.regex {
-             expression = "(?P<method>GET|PUT|DELETE|POST)"
-           }
-           stage.regex {
-             expression = "(?P<status_code_with_http_version>HTTP.{6}\\d{3})"
-           }
-           stage.regex {
-             expression = "(?P<status_code>\\d{3})"
-             source = "status_code_with_http_version"
-           }
-           stage.labels {
-             values = {
-               method = "",
-               status_code = "",
-             }
-           }
-         }
-         stage.match {
-           selector = "{tmp_container_runtime=\"containerd\"}"
-           stage.cri {}
-           stage.labels {
-             values = {
-               flags   = "",
-               stream  = "",
-             }
-           }
-         }
-         stage.match {
-           selector = "{tmp_container_runtime=\"docker\"}"
-           stage.docker {}
-           stage.labels {
-             values = {
-               stream  = "",
-             }
-           }
-         }
-         stage.label_drop {
-           values = ["tmp_container_runtime"]
-         }
-
-         forward_to = [loki.write.loki.receiver]
-       }
-       loki.write "loki" {
-        endpoint {
-          url = "http://loki-nginx.loki.svc.cluster.local:3100/loki/api/v1/push"
-
-          headers = {
-            Authorization = "Basic bG9raS1jYW5hcnk6bG9raS1jYW5hcnk=",
+      stage.match {
+        selector = "{tmp_container_runtime=\"containerd\"}"
+        stage.cri {}
+        stage.labels {
+          values = {
+            flags  = "",
+            stream = "",
           }
         }
-       }
+      }
 
-  kind: ConfigMap
-  metadata:
-    name: alloy-config
-    namespace: alloy-logs
+      stage.match {
+        selector = "{tmp_container_runtime=\"docker\"}"
+        stage.docker {}
+        stage.labels {
+          values = {
+            stream = "",
+          }
+        }
+      }
+
+      stage.label_drop {
+        values = ["tmp_container_runtime"]
+      }
+
+      stage.match {
+        selector = "{namespace=~\"(monitring|default)\"}"
+        stage.regex {
+          expression = "(?P<method>GET|PUT|DELETE|POST)"
+        }
+        stage.regex {
+          expression = "(?P<status_code_with_http_version>HTTP.{6}\\d{3})"
+        }
+        stage.regex {
+          expression = "(?P<status_code>\\d{3})"
+          source     = "status_code_with_http_version"
+        }
+        stage.labels {
+          values = {
+            method      = "",
+            status_code = "",
+          }
+        }
+      }
+
+      stage.json {
+        expressions = {
+          level   = "level",
+          app     = "app",
+          env     = "env",
+          message = "message",
+        }
+      }
+
+      forward_to = [loki.write.loki.receiver]
+    }
+
+    loki.process "cluster_events" {
+      stage.static_labels {
+        values = {
+          cluster     = "MillenniumFalcon",
+          event_type  = "kubernetes",
+        }
+      }
+
+      forward_to = [loki.write.loki.receiver]
+    }
+
+    loki.write "loki" {
+      endpoint {
+        url = "http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push"
+        headers = {
+          "Authorization" = "Basic bG9raS1jYW5hcnk6bG9raS1jYW5hcnk=",
+          "X-Scope-OrgID" = "tenant1",
+        }
+      }
+    }
+
+    otelcol.receiver.otlp "default" {
+      grpc {
+        endpoint = "0.0.0.0:4317"
+      }
+      http {}
+
+      output {
+        traces = [
+          otelcol.processor.k8sattributes.default.input,
+          otelcol.connector.spanlogs.default.input,
+          otelcol.connector.spanmetrics.default.input,
+          otelcol.connector.servicegraph.default.input,
+        ]
+      }
+    }
+
+    otelcol.processor.k8sattributes "default" {
+      extract {
+        metadata = [
+          "k8s.namespace.name",
+          "k8s.pod.name",
+          "k8s.container.name",
+          "k8s.deployment.name",
+          "k8s.statefulset.name",
+          "k8s.daemonset.name",
+        ]
+      }
+
+      output {
+        traces = [otelcol.processor.batch.default.input]
+      }
+    }
+
+    otelcol.connector.spanmetrics "default" {
+      dimension {
+        name    = "http.method"
+        default = "GET"
+      }
+
+      dimension {
+        name = "http.target"
+      }
+
+      aggregation_temporality = "DELTA"
+
+      histogram {
+        explicit {
+          buckets = ["50ms", "100ms", "250ms", "1s", "5s", "10s"]
+        }
+      }
+
+      metrics_flush_interval = "15s"
+      namespace              = "traces.spanmetrics"
+
+      output {
+        metrics = [otelcol.exporter.prometheus.default.input]
+      }
+    }
+
+    otelcol.connector.servicegraph "default" {
+      dimensions = ["http.method", "http.target"]
+
+      output {
+        metrics = [otelcol.exporter.prometheus.default.input]
+      }
+    }
+
+    otelcol.processor.batch "default" {
+      output {
+        traces  = [otelcol.exporter.otlp.tempo.input]
+        metrics = [otelcol.exporter.prometheus.default.input]
+      }
+    }
+
+    otelcol.exporter.prometheus "default" {
+      forward_to = [prometheus.remote_write.mimir.receiver]
+    }
+
+    prometheus.remote_write "mimir" {
+      endpoint {
+        url = "http://mimir-nginx.mimir.svc.cluster.local/api/v1/push"
+      }
+    }
+
+    otelcol.connector.spanlogs "default" {
+      roots           = true
+      span_attributes = ["http.method", "http.target"]
+
+      output {
+        logs = [otelcol.exporter.loki.spanlogs_exporter.input]
+      }
+    }
+
+    otelcol.exporter.otlp "tempo" {
+      client {
+        endpoint = "tempo-distributor.tempo.svc.cluster.local:4317"
+        tls {
+          insecure = true
+          insecure_skip_verify = true
+        }
+      }
+    }
+
+    otelcol.exporter.loki "spanlogs_exporter" {
+      forward_to = [loki.write.loki.receiver]
+    }
+
+    livedebugging {
+      enabled = true
+    }
+
+
+# https://grafana.com/docs/tempo/latest/configuration/grafana-alloy/migrate-alloy/
+
+
+# apiVersion: v1
+# data:
+#   config.alloy: |
+#     discovery.kubernetes "pods" {
+#       role = "pod"
+#     }
+
+#     discovery.relabel "pod_logs" {
+#       targets = discovery.kubernetes.pods.targets
+#       rule {
+#         source_labels = ["__meta_kubernetes_namespace"]
+#         target_label  = "namespace"
+#       }
+#       rule {
+#         source_labels = ["__meta_kubernetes_pod_name"]
+#         target_label  = "pod"
+#       }
+#       rule {
+#         source_labels = ["__meta_kubernetes_pod_container_name"]
+#         target_label  = "container"
+#       }
+#       // ENHANCEMENT: Added app label for better organization
+#       rule {
+#         source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+#         action = "replace"
+#         target_label = "app"
+#       }
+#       rule {
+#         source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_name"]
+#         separator     = "/"
+#         target_label  = "job"
+#       }
+
+#       rule {
+#         source_labels = ["__meta_kubernetes_node_name"]
+#         target_label  = "node"
+#       }
+
+#       rule {
+#         source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+#         separator     = "/"
+#         action        = "replace"
+#         replacement   = "/var/log/pods/*$1/*.log"
+#         target_label  = "__path__"
+#       }
+#       rule {
+#         action = "replace"
+#         source_labels = ["__meta_kubernetes_pod_container_id"]
+#         regex = "^(\\w+):\\/\\/.+$"
+#         replacement = "$1"
+#         target_label = "tmp_container_runtime"
+#       }
+#     }
+
+#     local.file_match "pod_logs" {
+#       path_targets = discovery.relabel.pod_logs.output
+#     }
+
+#     // Collects stdout/stderr logs from Kubernetes pods (your "app logs")
+#     loki.source.file "pod_logs" {
+#       targets    = local.file_match.pod_logs.targets
+#       forward_to = [loki.process.pod_logs.receiver]
+#     }
+
+#     // Collects Kubernetes API events
+#     loki.source.kubernetes_events "cluster_events" {
+#       job_name   = "integrations/kubernetes/eventhandler"
+#       log_format = "logfmt"
+#       forward_to = [loki.process.cluster_events.receiver]
+#     }
+
+
+#     loki.process "pod_logs" {
+#     // Static cluster label for all pod logs
+#       stage.static_labels {
+#         values = {
+#           cluster = "MillenniumFalcon",
+#         }
+#       }
+
+#       // ENHANCEMENT: Process container runtime formats universally first
+#       stage.match {
+#         selector = "{tmp_container_runtime=\"containerd\"}"
+#         stage.cri {}
+#         stage.labels {
+#           values = {
+#             flags  = "",
+#             stream = "",
+#           }
+#         }
+#       }
+
+#       stage.match {
+#         selector = "{tmp_container_runtime=\"docker\"}"
+#         stage.docker {}
+#         stage.labels {
+#           values = {
+#             stream = "",
+#           }
+#         }
+#       }
+
+#       stage.label_drop {
+#         values = ["tmp_container_runtime"] // Drop temporary label after use
+#       }
+
+#       // Process NGINX-specific logs from specific namespaces
+#       stage.match {
+#         selector = "{namespace=~\"(monitring|default)\"}" // Apply regex parsing only to these namespaces
+#         stage.regex {
+#           expression = "(?P<method>GET|PUT|DELETE|POST)"
+#         }
+#         stage.regex {
+#           expression = "(?P<status_code_with_http_version>HTTP.{6}\\d{3})"
+#         }
+#         stage.regex {
+#           expression = "(?P<status_code>\\d{3})"
+#           source = "status_code_with_http_version"
+#         }
+#         stage.labels {
+#           values = {
+#             method = "",
+#             status_code = "",
+#           }
+#         }
+#       }
+
+#       stage.json {
+#         expressions = {
+#           level     = "level",
+#           app       = "app",
+#           env       = "env",
+#           message   = "message",
+#         }
+#         // Uncomment below if you want to drop the original JSON log line once parsed
+#         // action = "drop"
+#       }
+#       forward_to = [loki.write.loki.receiver]
+#     }
+
+#     loki.process "cluster_events" {
+#       // ENHANCEMENT: Add static labels to Kubernetes events for better filtering
+#       stage.static_labels {
+#         values = {
+#           cluster = "MillenniumFalcon",
+#           event_type = "kubernetes", // Label to clearly identify these as K8s events
+#         }
+#       }
+#       forward_to = [loki.write.loki.receiver]
+#     }
+
+#     // Writes all processed logs to Loki via HTTP
+#     loki.write "loki" {
+#       endpoint {
+#         url = "http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push"
+#         headers = {
+#           "Authorization" = "Basic bG9raS1jYW5hcnk6bG9raS1jYW5hcnk=",
+#           "X-Scope-OrgID" = "tenant1",
+#         }
+#       }
+#     }
+
+#     livedebugging {
+#       enabled = true
+#     }
+# kind: ConfigMap
+# metadata:
+#   name: alloy-config
+#   namespace: alloy-logs
+
 
 
 

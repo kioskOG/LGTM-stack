@@ -26,6 +26,10 @@ loki:
       allow_structured_metadata: true
       volume_enabled: true
       retention_period: 672h # 28 days retention
+    commonConfig:
+      path_prefix: /var/loki
+      replication_factor: 1
+      compactor_address: '{{ include "loki.compactorAddress" . }}'
     compactor:
       retention_enabled: true 
       delete_request_store: s3
@@ -165,7 +169,7 @@ gateway:
     tag: 1.28-alpine
     pullPolicy: IfNotPresent
  service:
-   type: LoadBalancer
+   type: NodePort
  basicAuth: 
      enabled: true
      existingSecret: loki-basic-auth
@@ -326,3 +330,6 @@ memcachedExporter:
 memberlist:
   service:
     publishNotReadyAddresses: false
+
+
+# helm upgrade --install loki grafana/loki -n loki --create-namespace --values "/Users/opstree/Documents/github.io/prometheus-grafana/loki/loki-override-values.yaml"

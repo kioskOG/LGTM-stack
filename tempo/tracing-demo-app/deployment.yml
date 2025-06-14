@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-python-app
+spec:
+  selector:
+    matchLabels:
+      app: otel-python-app
+  template:
+    metadata:
+      labels:
+        app: otel-python-app
+    spec:
+      containers:
+      - name: otel-python-app
+        image: jatin560/tempo-traces-flask-app:v4
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: OTEL_LOGS_EXPORTER
+          value: "none"
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "grpc"
+        # Increase the exporter timeout to 30 seconds (30000 milliseconds)
+        - name: OTEL_EXPORTER_OTLP_TIMEOUT
+          value: "30000"
+        # Allow insecure connection to Alloy
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://grafana-alloy.alloy-logs.svc.cluster.local:4317"
