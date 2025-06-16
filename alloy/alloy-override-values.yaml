@@ -9,6 +9,15 @@ crds:
 ## chart, this field may also be called "agent". Naming this field "agent" is
 ## deprecated and will be removed in a future release.
 alloy:
+  extraPorts:
+    - name: otlp-grpc # The default port for otlp-grpc is 4317, so you need to add this port to the service related to your alloy instance
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http # The default port for otlp-http is 4318, so you need to add this port to the service related to your alloy instance
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
   configMap:
     # -- Create a new ConfigMap for the config file.
     create: false
@@ -164,6 +173,3 @@ serviceMonitor:
   #   targetLabel: nodename
   #   replacement: $1
   #   action: replace
-
-
-# helm upgrade --install grafana-alloy grafana/alloy -f alloy-override-values.yaml --namespace alloy-logs

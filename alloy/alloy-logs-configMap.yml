@@ -194,6 +194,7 @@ data:
       }
     }
 
+    // https://grafana.com/docs/tempo/latest/configuration/grafana-alloy/span-metrics/#generate-metrics-from-spans
     otelcol.connector.spanmetrics "default" {
       dimension {
         name    = "http.method"
