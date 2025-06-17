@@ -802,4 +802,4 @@ gateway:
       }
 
 
-# helm upgrade --install tempo grafana/tempo-distributed -n tempo --create-namespace -f ../tempo/tempo-override-values.yaml
+# helm upgrade --install tempo grafana/tempo-distributed -n tempo --create-namespace -f tempo/tempo-override-values.yaml
