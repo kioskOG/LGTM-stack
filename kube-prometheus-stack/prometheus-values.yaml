@@ -1,0 +1,72 @@
+server:
+  persistentVolume:
+    enabled: true
+    storageClass: gp2-standard
+    size: 10Gi
+
+alertmanager:
+  persistentVolume:
+    enabled: false
+    storageClass: gp2-standard
+    size: 10Gi
+
+prometheus:
+  prometheusSpec:
+    # Enable remote write receiver for Tempo metrics (default: false)
+    enableRemoteWriteReceiver: true
+    remote_write:
+    - url: "http://mimir-nginx.mimir.svc.cluster.local:80/api/v1/push"
+      name: mimir
+    remoteWriteDashboards: true
+    # Enable exemplar storage for metrics-traces linking (default: [])
+    enableFeatures:
+      - exemplar-storage
+      - native-histograms
+
+nodeExporter:
+  enabled: false  # Default: true
+
+prometheus-node-exporter:
+  enabled: false  # Default: true
+
+
+# Grafana
+
+persistence:
+  enabled: true
+  storageClassName: gp2
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi
+
+adminUser: admin
+adminPassword: admin
+service:
+  type: ClusterIP
+
+grafana:
+  # Enable anonymous access for demo (default: requires login)
+  grafana.ini:
+    auth.anonymous:
+      enabled: true
+      org_role: Admin
+    auth:
+      disable_login_form: true
+    feature_toggles:
+      enable: 
+        - traceqlEditor
+        - tempoServiceGraph
+        - newNavigation
+
+# Add trace exploration plugin (default: no plugins)
+  plugins:
+    - grafana-exploretraces-app
+
+
+
+
+# helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#   --version 72.6.2 \
+#   --namespace monitoring \
+#   --values prometheus-grafana/prometheus-values.yaml \
+#   --wait

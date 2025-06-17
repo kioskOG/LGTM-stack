@@ -81,7 +81,7 @@ compactor:
 distributor:
   podDisruptionBudget:
     maxUnavailable: 1
-  replicas: 2 #12
+  replicas: 1 #12
   resources:
     limits:
       memory: 1Gi #5.7Gi
@@ -425,7 +425,7 @@ mimir:
       # Delete from storage metrics data older than 1 year from object storage.
       compactor_blocks_retention_period: 1y
       # Global default ingestion limits (samples/sec and burst)
-      ingestion_rate: 50000       # Adjust based on your overall cluster capacity and typical load
+      ingestion_rate: 250000       # Adjust based on your overall cluster capacity and typical load
       ingestion_burst_size: 1000000 # Typically 10-20x ingestion_rate
 
     memberlist:
