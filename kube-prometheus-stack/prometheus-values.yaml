@@ -1264,12 +1264,38 @@ grafana:
       enabled: true
       org_role: Admin
     auth:
-      disable_login_form: true
+      disable_login_form: false
     feature_toggles:
-      enable: 
-        - traceqlEditor
-        - tempoServiceGraph
-        - newNavigation
+      enable: "traceqlEditor,tempoServiceGraph,newNavigation"
+  #   auth.generic_oauth:
+  #     verbose_logging: true
+  #     enabled: true
+  #     name: Keycloak
+  #     allow_sign_up: true
+  #     client_id: grafana
+  #     # client_secret: TYv3hAvHy1Rcpn4FoK5PZ62JHFReXKen
+  #     client_secret: $__file{/etc/secrets/oauth/client_secret}
+  #     scopes: openid email profile
+  #     # auth_url must be accessible from the user's browser
+  #     auth_url: http://localhost:8080/realms/grafana/protocol/openid-connect/auth
+  #     # token_url and api_url are server-to-server communications
+  #     token_url: http://keycloak.keycloak.svc.cluster.local:80/realms/grafana/protocol/openid-connect/token
+  #     api_url: http://keycloak.keycloak.svc.cluster.local:80/realms/grafana/protocol/openid-connect/userinfo
+  #     role_attribute_path: "contains(realm_access.roles[*], 'admin') && 'Admin' || 'Viewer'"      
+  #     login_attribute_path: preferred_username
+  #     name_attribute_path: name
+  #     email_attribute_path: email
+  # extraSecretMounts:
+  #   - name: grafana-oauth-secret
+  #     mountPath: /etc/secrets/oauth
+  #     secretName: grafana-oauth-secret
+  #     readOnly: true
+  
+  # create client_secret secret when using auth.generic_oauth
+  # kubectl create secret generic grafana-oauth-secret \
+  # --from-literal=client_secret=TYv3hAvHy1Rcpn4FoK5PZ62JHFReXKen \
+  # --namespace monitoring
+
     # Add trace exploration plugin (default: no plugins)
   plugins:
     - grafana-exploretraces-app
@@ -1360,10 +1386,10 @@ grafana:
   persistence:
     enabled: true
     type: sts
-    storageClassName: "storageClassName"
+    storageClassName: "gp2-standard"
     accessModes:
       - ReadWriteOnce
-    size: 20Gi
+    size: 5Gi
     finalizers:
       - kubernetes.io/pvc-protection
 

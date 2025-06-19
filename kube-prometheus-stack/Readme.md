@@ -41,7 +41,7 @@ helm repo update
 helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --version 72.6.2 \
   --namespace monitoring \
-  --values prometheus-grafana/prometheus-values.yaml
+  --values kube-prometheus-stack/prometheus-values.yaml
 ```
 
 > [!NOTE]
