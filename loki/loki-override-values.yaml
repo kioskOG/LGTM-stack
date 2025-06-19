@@ -2,7 +2,7 @@ loki:
     image:
       registry: docker.io
       repository: grafana/loki
-      tag: 3.5.0
+      tag: 3.5.1
       pullPolicy: IfNotPresent
     schemaConfig:
       configs:
@@ -24,6 +24,7 @@ loki:
         enabled: true
     limits_config:
       allow_structured_metadata: true
+      discover_log_levels: true
       volume_enabled: true
       retention_period: 672h # 28 days retention
     commonConfig:
@@ -82,7 +83,7 @@ ingester:
  image:
     registry: docker.io
     repository: grafana/loki
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
  terminationGracePeriodSeconds: 300
  replicas: 2 #3
@@ -96,7 +97,7 @@ querier:
  image:
     registry: docker.io
     repository: grafana/loki
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
  replicas: 1 #3
  maxUnavailable: 2
@@ -106,7 +107,7 @@ queryFrontend:
  image:
     registry: docker.io
     repository: grafana/loki
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
  replicas: 1 #2
  maxUnavailable: 1
@@ -116,7 +117,7 @@ queryScheduler:
  image:
     registry: docker.io
     repository: grafana/loki
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
  replicas: 1 #2
 
@@ -125,7 +126,7 @@ distributor:
  image:
     registry: docker.io
     repository: grafana/loki
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
  replicas: 1 #3
  maxUnavailable: 2
@@ -135,7 +136,7 @@ compactor:
  image:
     registry: docker.io
     repository: grafana/loki
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
  replicas: 1
 
@@ -144,7 +145,7 @@ indexGateway:
  image:
     registry: docker.io
     repository: grafana/loki
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
  replicas: 1
  maxUnavailable: 1
@@ -156,7 +157,7 @@ ruler:
  image:
     registry: docker.io
     repository: grafana/loki
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
 
 
@@ -183,7 +184,7 @@ lokiCanary:
   image:
     registry: docker.io
     repository: grafana/loki-canary
-    tag: 3.5.0
+    tag: 3.5.1
     pullPolicy: IfNotPresent
   extraArgs:
     - -pass=$(LOKI_PASS)

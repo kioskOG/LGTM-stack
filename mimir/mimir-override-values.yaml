@@ -40,6 +40,7 @@
 # https://github.com/grafana/mimir/blob/main/operations/mimir-mixin-compiled/dashboards/mimir-compactor-resources.json
 
 alertmanager:
+  enabled: true
   zoneAwareReplication:
     enabled: false
   statefulSet:
@@ -245,6 +246,7 @@ ruler:
       memory: 1Gi #4Gi
 
 store_gateway:
+  enabled: true
   persistentVolume:
     size: 5Gi #50Gi
   replicas: 1 #6

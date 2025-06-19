@@ -1478,7 +1478,63 @@ grafana:
 
   ## Configure additional grafana datasources (passed through tpl)
   ## ref: https://grafana.com/docs/grafana/latest/administration/provisioning/#datasources
-  additionalDataSources: []
+  additionalDataSources:
+      - name: Tempo
+        type: tempo
+        access: proxy
+        uid: tempo
+        url: http://tempo-query-frontend.tempo.svc.cluster.local:3200
+        isDefault: false
+        editable: true
+        jsonData:
+          httpMethod: GET
+          tracesToLogsV2:
+            datasourceUid: "loki"
+            spanStartTimeShift: '-1h'
+            spanEndTimeShift: '1h'
+            filterByTraceID: true
+            filterBySpanID: false
+          tracesToMetrics:
+            datasourceUid: "mimir"
+            spanStartTimeShift: '-1h'
+            spanEndTimeShift: '1h'
+            tags: [{ key: 'job' }]
+          streamingEnabled:
+            search: true
+          traceQuery:
+            timeShiftEnabled: true
+          serviceMap:
+            datasourceUid: "mimir"
+          nodeGraph:
+            enabled: true
+          spanBar:
+            datasourceUid: "mimir"
+          lokiSearch:
+            datasourceUid: 'loki'
+      - name: Mimir
+        type: prometheus
+        access: proxy
+        uid: mimir
+        url: http://mimir-nginx.mimir.svc.cluster.local/prometheus
+        isDefault: false
+        editable: true
+      - name: Loki # (name of the data source)
+        type: loki # (type of data source)
+        uid: loki
+        access: proxy # (access type)
+        orgId: 1
+        url: http://loki-gateway.loki.svc.cluster.local # (URL of the Loki data source. Loki uses an nginx gateway to direct traffic to the appropriate component)
+        basicAuth: true
+        basicAuthUser: loki-canary
+        secureJsonData:
+          basicAuthPassword: loki-canary
+          httpHeaderValue1: "tenant1"
+        isDefault: false
+        version: 1
+        editable: true
+        jsonData:
+          httpHeaderName1: "X-Scope-OrgID" # (header name for the organization ID)
+          
   # - name: prometheus-sample
   #   access: proxy
   #   basicAuth: true
@@ -2544,7 +2600,7 @@ kube-state-metrics:
 ## Deploy node exporter as a daemonset to all nodes
 ##
 nodeExporter:
-  enabled: true
+  enabled: false
   operatingSystems:
     linux:
       enabled: true
@@ -3967,7 +4023,7 @@ prometheus:
     ## Defaults to 30s.
     ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/release-0.44/pkg/prometheus/promcfg.go#L180-L183
     ##
-    scrapeInterval: ""
+    scrapeInterval: "30s"
 
     ## Number of seconds to wait for target to respond before erroring
     ##
