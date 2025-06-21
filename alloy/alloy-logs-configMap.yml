@@ -7,6 +7,19 @@ data:
   config.alloy: |
     discovery.kubernetes "pods" {
       role = "pod"
+     
+     // https://grafana.com/docs/alloy/latest/collect/prometheus-metrics/
+     // this demonstrates configuring Alloy to collect data (metrics or logs) from running production Kubernetes Pods in the default Namespace.
+    //  namespaces {
+    //    own_namespace = false
+
+    //    names = ["default"]
+    //  }
+
+    //  selectors {
+    //    role  = "pod"
+    //    label = "environment in (production)"
+    //  }
     }
 
     discovery.relabel "pod_logs" {
@@ -61,6 +74,47 @@ data:
       }
     }
 
+    // configuring Alloy to collect its own telemetry and forward it to the mimir backend.
+    prometheus.exporter.self "default" {}
+
+    prometheus.scrape "metamonitoring" {
+      targets    = prometheus.exporter.self.default.targets
+      forward_to = [prometheus.remote_write.mimir.receiver]
+    }
+
+    logging {
+      level    = "warn"
+      format   = "json"
+      write_to = [loki.write.loki.receiver]
+    }
+
+    tracing {
+      sampling_fraction = 0.1
+      write_to          = [otelcol.exporter.otlp.tempo.input]
+    }
+    //
+
+    // System or Node logs
+    // local.file_match discovers files on the local filesystem using glob patterns and the doublestar library. It returns an array of file paths.
+    local.file_match "node_logs" {
+      path_targets = [{
+          // Monitor syslog to scrape node-logs
+          __path__  = "/var/log/syslog",
+          job       = "node/syslog",
+          node_name = sys.env("HOSTNAME"),
+          cluster   = "MillenniumFalcon",
+      }]
+    }
+
+    // loki.source.file reads log entries from files and forwards them to other loki.* components.
+    // You can specify multiple loki.source.file components by giving them different labels.
+    loki.source.file "node_logs" {
+      targets    = local.file_match.node_logs.targets
+      forward_to = [loki.write.loki.receiver]
+    }
+
+    // Pods logs
+
     local.file_match "pod_logs" {
       path_targets = discovery.relabel.pod_logs.output
     }
@@ -69,6 +123,8 @@ data:
       targets    = local.file_match.pod_logs.targets
       forward_to = [loki.process.pod_logs.receiver]
     }
+
+    // Kubernetes Cluster Events
 
     loki.source.kubernetes_events "cluster_events" {
       job_name   = "integrations/kubernetes/eventhandler"
@@ -109,7 +165,7 @@ data:
       }
 
       stage.match {
-        selector = "{namespace=~\"(monitring|default)\"}"
+        selector = "{namespace=~\"(monitoring|default)\"}"
         stage.regex {
           expression = "(?P<method>GET|PUT|DELETE|POST)"
         }
@@ -222,7 +278,7 @@ data:
     }
 
     otelcol.connector.servicegraph "default" {
-      dimensions = ["http.method", "http.target"]
+      dimensions = ["http.method", "http.target", "service.name"]
 
       output {
         metrics = [otelcol.exporter.prometheus.default.input]
@@ -273,179 +329,6 @@ data:
       enabled = true
     }
 
-
-# https://grafana.com/docs/tempo/latest/configuration/grafana-alloy/migrate-alloy/
-
-
-# apiVersion: v1
-# data:
-#   config.alloy: |
-#     discovery.kubernetes "pods" {
-#       role = "pod"
-#     }
-
-#     discovery.relabel "pod_logs" {
-#       targets = discovery.kubernetes.pods.targets
-#       rule {
-#         source_labels = ["__meta_kubernetes_namespace"]
-#         target_label  = "namespace"
-#       }
-#       rule {
-#         source_labels = ["__meta_kubernetes_pod_name"]
-#         target_label  = "pod"
-#       }
-#       rule {
-#         source_labels = ["__meta_kubernetes_pod_container_name"]
-#         target_label  = "container"
-#       }
-#       // ENHANCEMENT: Added app label for better organization
-#       rule {
-#         source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
-#         action = "replace"
-#         target_label = "app"
-#       }
-#       rule {
-#         source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_name"]
-#         separator     = "/"
-#         target_label  = "job"
-#       }
-
-#       rule {
-#         source_labels = ["__meta_kubernetes_node_name"]
-#         target_label  = "node"
-#       }
-
-#       rule {
-#         source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
-#         separator     = "/"
-#         action        = "replace"
-#         replacement   = "/var/log/pods/*$1/*.log"
-#         target_label  = "__path__"
-#       }
-#       rule {
-#         action = "replace"
-#         source_labels = ["__meta_kubernetes_pod_container_id"]
-#         regex = "^(\\w+):\\/\\/.+$"
-#         replacement = "$1"
-#         target_label = "tmp_container_runtime"
-#       }
-#     }
-
-#     local.file_match "pod_logs" {
-#       path_targets = discovery.relabel.pod_logs.output
-#     }
-
-#     // Collects stdout/stderr logs from Kubernetes pods (your "app logs")
-#     loki.source.file "pod_logs" {
-#       targets    = local.file_match.pod_logs.targets
-#       forward_to = [loki.process.pod_logs.receiver]
-#     }
-
-#     // Collects Kubernetes API events
-#     loki.source.kubernetes_events "cluster_events" {
-#       job_name   = "integrations/kubernetes/eventhandler"
-#       log_format = "logfmt"
-#       forward_to = [loki.process.cluster_events.receiver]
-#     }
-
-
-#     loki.process "pod_logs" {
-#     // Static cluster label for all pod logs
-#       stage.static_labels {
-#         values = {
-#           cluster = "MillenniumFalcon",
-#         }
-#       }
-
-#       // ENHANCEMENT: Process container runtime formats universally first
-#       stage.match {
-#         selector = "{tmp_container_runtime=\"containerd\"}"
-#         stage.cri {}
-#         stage.labels {
-#           values = {
-#             flags  = "",
-#             stream = "",
-#           }
-#         }
-#       }
-
-#       stage.match {
-#         selector = "{tmp_container_runtime=\"docker\"}"
-#         stage.docker {}
-#         stage.labels {
-#           values = {
-#             stream = "",
-#           }
-#         }
-#       }
-
-#       stage.label_drop {
-#         values = ["tmp_container_runtime"] // Drop temporary label after use
-#       }
-
-#       // Process NGINX-specific logs from specific namespaces
-#       stage.match {
-#         selector = "{namespace=~\"(monitring|default)\"}" // Apply regex parsing only to these namespaces
-#         stage.regex {
-#           expression = "(?P<method>GET|PUT|DELETE|POST)"
-#         }
-#         stage.regex {
-#           expression = "(?P<status_code_with_http_version>HTTP.{6}\\d{3})"
-#         }
-#         stage.regex {
-#           expression = "(?P<status_code>\\d{3})"
-#           source = "status_code_with_http_version"
-#         }
-#         stage.labels {
-#           values = {
-#             method = "",
-#             status_code = "",
-#           }
-#         }
-#       }
-
-#       stage.json {
-#         expressions = {
-#           level     = "level",
-#           app       = "app",
-#           env       = "env",
-#           message   = "message",
-#         }
-#         // Uncomment below if you want to drop the original JSON log line once parsed
-#         // action = "drop"
-#       }
-#       forward_to = [loki.write.loki.receiver]
-#     }
-
-#     loki.process "cluster_events" {
-#       // ENHANCEMENT: Add static labels to Kubernetes events for better filtering
-#       stage.static_labels {
-#         values = {
-#           cluster = "MillenniumFalcon",
-#           event_type = "kubernetes", // Label to clearly identify these as K8s events
-#         }
-#       }
-#       forward_to = [loki.write.loki.receiver]
-#     }
-
-#     // Writes all processed logs to Loki via HTTP
-#     loki.write "loki" {
-#       endpoint {
-#         url = "http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push"
-#         headers = {
-#           "Authorization" = "Basic bG9raS1jYW5hcnk6bG9raS1jYW5hcnk=",
-#           "X-Scope-OrgID" = "tenant1",
-#         }
-#       }
-#     }
-
-#     livedebugging {
-#       enabled = true
-#     }
-# kind: ConfigMap
-# metadata:
-#   name: alloy-config
-#   namespace: alloy-logs
 
 
 
