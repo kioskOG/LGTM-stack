@@ -258,9 +258,14 @@ metricsGenerator:
     metrics_ingestion_time_range_slack: 30s
     # Timeout for metric requests
     query_timeout: 30s
-    
-global_overrides:
-  metrics_generator_processors: [service-graphs, span-metrics, local-blocks] # [service-graphs, span-metrics, local-blocks]
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics, local-blocks]
+
+# global_overrides:
+#   metrics_generator_processors: [service-graphs, span-metrics, local-blocks] # [service-graphs, span-metrics, local-blocks]
 
 distributor:
   replicas: 1
