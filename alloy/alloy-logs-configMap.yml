@@ -194,13 +194,15 @@ data:
       }
 
       stage.regex {
+        // This regex specifically targets the INFO:__main__:Response metadata: {'trace_id': '...', 'span_id': '...'} part
+        // and extracts trace_id and span_id as named capture groups.
         expression = "'trace_id': '(?P<traceID>[a-f0-9]+)', 'span_id': '(?P<spanID>[a-f0-9]+)'"
       }
 
       stage.labels {
         values = {
-          traceID = "",
-          spanID  = "",
+          traceID = "",    // Promote captured group to a label
+          spanID  = "",    // Promote captured group to a label
         }
       }
 
