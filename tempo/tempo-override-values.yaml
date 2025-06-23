@@ -108,6 +108,7 @@ ingester:
     # -- Maximum length of time before cutting a block
     max_block_duration: null #30m
     # -- Duration to keep blocks in the ingester after they have been flushed
+    # How long to hold a complete block in the ingester after it has been flushed to the backend. Default is 15m
     complete_block_timeout: null #15s
     # -- Flush all traces to backend when ingester is stopped
     flush_all_on_shutdown: false
@@ -136,8 +137,8 @@ storage:
       prefetch_trace_count: 1000
     # -- How often to repoll the backend for new blocks
     blocklist_poll: 5m
-    # -- Number of blocks to process in parallel during polling.
-    blocklist_poll_concurrency: null
+    # -- Number of blocks to process in parallel during polling. Default is 50.
+    blocklist_poll_concurrency: 50 # null
     # -- By default components will pull the blocklist from the tenant index. If that fails the component can
     # -- fallback to scanning the entire bucket. Set to false to disable this behavior.
     blocklist_poll_fallback: null
@@ -260,6 +261,7 @@ metricsGenerator:
     query_timeout: 30s
 
 overrides:
+  # Global ingestion limits configurations
   defaults:
     metrics_generator:
       processors: [service-graphs, span-metrics, local-blocks]
@@ -341,6 +343,7 @@ compactor:
       # -- Duration to keep blocks
       block_retention: 48h
       # Duration to keep blocks that have been compacted elsewhere
+      # How long to leave a block in the backend after it has been compacted successfully.
       compacted_block_retention: 1h
       # -- Blocks in this time window will be compacted together
       compaction_window: 1h
@@ -509,8 +512,11 @@ memberlist:
 
 # Tempo server configuration
 server:
+  http_listen_network: tcp
   # --  HTTP server listen host
   httpListenPort: 3200
+  # gRPC
+  grpc_listen_network: tcp
   # gRPC server listen port
   grpc_listen_port: 9095
   # Register instrumentation handlers (/metrics, etc.)

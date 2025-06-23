@@ -1494,12 +1494,12 @@ grafana:
             spanEndTimeShift: '15m'
             filterByTraceID: true
             filterBySpanID: false
-            tags: [{ key: 'service.name'}]
+            tags: [{ key: 'service.name', value: 'service_name'}]
           tracesToMetrics:
             datasourceUid: "mimir"
             spanStartTimeShift: '-1h'
             spanEndTimeShift: '1h'
-            tags: [{ key: 'service.name' }]
+            tags: [{ key: 'service.name', value: 'service_name' }]
           streamingEnabled:
             search: true
           traceQuery:
