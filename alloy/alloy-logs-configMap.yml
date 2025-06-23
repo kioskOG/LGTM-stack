@@ -193,6 +193,17 @@ data:
         }
       }
 
+      stage.regex {
+        expression = "'trace_id': '(?P<traceID>[a-f0-9]+)', 'span_id': '(?P<spanID>[a-f0-9]+)'"
+      }
+
+      stage.labels {
+        values = {
+          traceID = "",
+          spanID  = "",
+        }
+      }
+
       forward_to = [loki.write.loki.receiver]
     }
 
@@ -305,6 +316,7 @@ data:
     otelcol.connector.spanlogs "default" {
       roots           = true
       span_attributes = ["http.method", "http.target"]
+      labels = ["trace_id", "span_id", "service.name"]
 
       output {
         logs = [otelcol.exporter.loki.spanlogs_exporter.input]

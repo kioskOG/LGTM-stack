@@ -1490,15 +1490,16 @@ grafana:
           httpMethod: GET
           tracesToLogsV2:
             datasourceUid: "loki"
-            spanStartTimeShift: '-1h'
-            spanEndTimeShift: '1h'
+            spanStartTimeShift: '-15m'
+            spanEndTimeShift: '15m'
             filterByTraceID: true
             filterBySpanID: false
+            tags: [{ key: 'service.name'}]
           tracesToMetrics:
             datasourceUid: "mimir"
             spanStartTimeShift: '-1h'
             spanEndTimeShift: '1h'
-            tags: [{ key: 'job' }]
+            tags: [{ key: 'service.name' }]
           streamingEnabled:
             search: true
           traceQuery:

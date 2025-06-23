@@ -19,7 +19,7 @@ trace.set_tracer_provider(TracerProvider(resource=resource))
 tracer_provider = trace.get_tracer_provider()
 
 otlp_exporter = OTLPSpanExporter(
-    endpoint="http://grafana-alloy.alloy-logs.svc.cluster.local:4317",
+    endpoint="grafana-alloy.alloy-logs.svc.cluster.local:4317",
     insecure=True,
 )
 
