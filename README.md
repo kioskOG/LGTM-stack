@@ -132,6 +132,9 @@ helm repo update
 kubectl create namespace loki
 ```
 
+> [!NOTE]
+> This is very importent else loki gateway will fail.
+
 ### 8. Loki Basic Authentication
 
 Loki by default does not come with any authentication. Since we will be deploying Loki to AWS and exposing the gateway to the internet near future, as of now we aren't exposing it to internet, I recommend adding at least basic authentication. In this guide we will give Loki a `username` and `password`:
@@ -435,6 +438,26 @@ kubectl logs -n alloy-logs -l app.kubernetes.io/name=grafana-alloy --tail=100
 ```
 
 ```bash
-helm upgrade --install mimir grafana/mimir-distributed -n mimir -f ../mimir/mimir-override-values.yaml
-helm upgrade --install tempo grafana/tempo-distributed -n tempo --create-namespace -f ../tempo/tempo-override-values.yaml
+helm upgrade --install mimir grafana/mimir-distributed -n mimir -f ./mimir/mimir-override-values.yaml
+helm upgrade --install tempo grafana/tempo-distributed -n tempo --create-namespace -f ./tempo/tempo-override-values.yaml
+```
+
+
+
+
+> [!IMPORTANT]
+> # If you wanna use Makefile for the same
+
+
+## ✅ How to Run
+
+```bash
+make help
+make install                  # Install all
+make install-loki             # Just Loki
+make install-tempo            # Just Tempo
+make uninstall-alloy          # Uninstall Alloy
+make status-mimir             # Get Mimir status
+make logs-tempo               # Tail Tempo logs
+make template-debug-loki      # Render Loki manifests
 ```

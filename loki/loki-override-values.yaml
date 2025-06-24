@@ -87,6 +87,14 @@ ingester:
     pullPolicy: IfNotPresent
  terminationGracePeriodSeconds: 300
  replicas: 2 #3
+ serviceLabels:
+   release: kube-prometheus-stack
+ persistence:
+    enabled: true
+    size: 5Gi #50Gi
+    accessModes:
+      - ReadWriteOnce
+    storageClass: gp2-standard
  maxUnavailable: 1 
  zoneAwareReplication:
   enabled: false
@@ -101,6 +109,8 @@ querier:
     pullPolicy: IfNotPresent
  replicas: 1 #3
  maxUnavailable: 2
+ serviceLabels:
+   release: kube-prometheus-stack
 
 #queryFrontend
 queryFrontend:
@@ -111,6 +121,8 @@ queryFrontend:
     pullPolicy: IfNotPresent
  replicas: 1 #2
  maxUnavailable: 1
+ serviceLabels:
+   release: kube-prometheus-stack
 
 #queryScheduler
 queryScheduler:
@@ -120,6 +132,8 @@ queryScheduler:
     tag: 3.5.1
     pullPolicy: IfNotPresent
  replicas: 1 #2
+ serviceLabels:
+   release: kube-prometheus-stack
 
 #distributor
 distributor:
@@ -130,6 +144,8 @@ distributor:
     pullPolicy: IfNotPresent
  replicas: 1 #3
  maxUnavailable: 2
+ serviceLabels:
+   release: kube-prometheus-stack
 
 #compactor
 compactor:
@@ -139,6 +155,14 @@ compactor:
     tag: 3.5.1
     pullPolicy: IfNotPresent
  replicas: 1
+ serviceLabels:
+   release: kube-prometheus-stack
+ persistence:
+    enabled: true
+    size: 5Gi #10Gi
+    accessModes:
+      - ReadWriteOnce
+    storageClass: gp2-standard
 
 #indexGateway
 indexGateway:
@@ -147,8 +171,17 @@ indexGateway:
     repository: grafana/loki
     tag: 3.5.1
     pullPolicy: IfNotPresent
+ joinMemberlist: true
+ serviceLabels:
+   release: kube-prometheus-stack
  replicas: 1
  maxUnavailable: 1
+ persistence:
+    enabled: true
+    size: 5Gi #10Gi
+    accessModes:
+      - ReadWriteOnce
+    storageClass: gp2-standard
 
 #ruler
 ruler:
@@ -170,7 +203,11 @@ gateway:
     tag: 1.28-alpine
     pullPolicy: IfNotPresent
  service:
-   type: NodePort
+   # -- Port of the gateway service
+   port: 80
+   type: ClusterIP
+   labels:
+     release: kube-prometheus-stack
  basicAuth: 
      enabled: true
      existingSecret: loki-basic-auth
@@ -331,6 +368,25 @@ memcachedExporter:
 memberlist:
   service:
     publishNotReadyAddresses: false
+
+rollout_operator:
+# -- Enable rollout-operator. It must be enabled when using Zone Aware Replication.
+  enabled: false
+
+  podSecurityContext:
+    fsGroup: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
+
+  # Set the container security context
+  securityContext:
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+    allowPrivilegeEscalation: false
 
 
 # helm upgrade --install loki grafana/loki -n loki --create-namespace --values "/Users/opstree/Documents/github.io/prometheus-grafana/loki/loki-override-values.yaml"

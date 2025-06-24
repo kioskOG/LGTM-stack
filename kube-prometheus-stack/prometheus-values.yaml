@@ -1221,6 +1221,7 @@ alertmanager:
 ##
 grafana:
   enabled: true
+  replicas: 2
   namespaceOverride: ""
 
   ## ForceDeployDatasources Create datasource configmap even if grafana deployment has been disabled
@@ -1265,8 +1266,10 @@ grafana:
       org_role: Admin
     auth:
       disable_login_form: false
+      disable_login: false
+      disable_signout_menu: false
     feature_toggles:
-      enable: "traceqlEditor,tempoServiceGraph,newNavigation"
+      enable: "traceqlEditor,tempoServiceGraph,newNavigation,traceToMetrics,provisioning,kubernetesClientDashboardsFolders,kubernetesDashboards,grafanaAPIServerEnsureKubectlAccess"
   #   auth.generic_oauth:
   #     verbose_logging: true
   #     enabled: true
@@ -1297,6 +1300,7 @@ grafana:
   # --namespace monitoring
 
     # Add trace exploration plugin (default: no plugins)
+    # https://grafana.com/api/plugins
   plugins:
     - grafana-exploretraces-app
 
@@ -1493,7 +1497,7 @@ grafana:
             spanStartTimeShift: '-15m'
             spanEndTimeShift: '15m'
             filterByTraceID: true
-            filterBySpanID: false
+            filterBySpanID: true
             tags: [{ key: 'service.name', value: 'service_name'}]
           tracesToMetrics:
             datasourceUid: "mimir"
@@ -1575,7 +1579,8 @@ grafana:
     #  namespace: monitoring  (defaults to use the namespace this chart is deployed to)
 
     # labels for the ServiceMonitor
-    labels: {}
+    labels:
+      release: kube-prometheus-stack
 
     # Scrape interval. If not set, the Prometheus default scrape interval is used.
     #
@@ -4397,6 +4402,16 @@ prometheus:
     remoteWrite:
       - url: "http://mimir-nginx.mimir.svc.cluster.local:80/api/v1/push"
         name: mimir
+        queue_config:
+          max_samples_per_send: 1000
+          batch_send_deadline: 5s
+          max_shards: 10
+          capacity: 50000
+        # write_relabel_configs:
+        # drop specific metrics from remote-write
+        # - source_labels: ['__name__']
+        #   regex: 'go_gc_.*'
+        #   action: 'drop'
     # - url: http://remote1/push
     ## additionalRemoteWrite is appended to remoteWrite
     additionalRemoteWrite: []
@@ -5490,3 +5505,6 @@ extraManifests: null
   #   data:
   #     plaintext: Zm9vYmFy
   #     templated: '{{ print "foobar" | upper | b64enc }}'
+
+
+# helm upgrade --install kube-prometheus-stack ./kube-prometheus-stack/ --namespace monitoring -f kube-prometheus-stack/prometheus-values.yaml

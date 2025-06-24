@@ -38,10 +38,7 @@ helm repo update
 ## Install the Kube Prometheus Stack Helm Chart
 
 ```bash
-helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  --version 72.6.2 \
-  --namespace monitoring \
-  --values kube-prometheus-stack/prometheus-values.yaml
+helm upgrade --install kube-prometheus-stack ./kube-prometheus-stack/ --namespace monitoring -f kube-prometheus-stack/prometheus-values.yaml
 ```
 
 > [!NOTE]
