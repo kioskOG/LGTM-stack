@@ -222,6 +222,8 @@ metricsGenerator:
         wait: 10s
         workers: 10
         enable_messaging_system_latency_histogram: true
+        enable_client_server_prefix: true
+        peer_attributes: ["peer.service", "db.name", "db.system"]
       span_metrics:
         # Configure intrinsic dimensions to add to the metrics. Intrinsic dimensions are taken
         # directly from the respective resource and span properties.

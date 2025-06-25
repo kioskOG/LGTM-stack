@@ -541,6 +541,7 @@ mimir:
       max_label_names_per_series: 30
       max_label_names_per_info_series: 80
       max_metadata_length: 1024
+      max_global_series_per_user: 250000
       max_native_histogram_buckets: 0
       max_exemplars_per_series_per_request: 0
       reduce_native_histogram_over_max_buckets: true

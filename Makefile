@@ -86,7 +86,7 @@ install-mimir:
 		--debug
 
 install-kps:
-	helm upgrade --install kps $(CHART_kps) \
+	helm upgrade --install kube-prometheus-stack $(CHART_kps) \
 		-n $(NAMESPACE_kps) \
 		--values $(VALUES_kps) \
 		--debug
@@ -119,7 +119,7 @@ template-debug-%:
 # -------------------------------------
 # Batch Commands
 install: init install-loki install-tempo install-alloy install-mimir install-kps
-uninstall: uninstall-loki uninstall-tempo uninstall-alloy uninstall-mimir uninstall-kps
+uninstall: uninstall-loki uninstall-tempo uninstall-mimir uninstall-kps
 uninstall-alloy: uninstall-alloy
 status: status-loki status-tempo status-alloy status-mimir status-kps
 logs: logs-loki logs-tempo logs-alloy logs-mimir logs-kps
