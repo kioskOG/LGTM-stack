@@ -241,6 +241,11 @@ data:
           "X-Scope-OrgID" = "tenant1",
         }
       }
+      external_labels = {
+          "env"      = "production",
+          "region"   = "ap-southeast-1",
+          "cluster"  = "MillenniumFalcon",
+          }
     }
 
     otelcol.receiver.otlp "default" {
@@ -263,11 +268,13 @@ data:
       extract {
         metadata = [
           "k8s.namespace.name",
+          "k8s.node.name",
           "k8s.pod.name",
           "k8s.container.name",
           "k8s.deployment.name",
           "k8s.statefulset.name",
           "k8s.daemonset.name",
+          "container.image.tag",
         ]
       }
 
@@ -297,6 +304,7 @@ data:
 
       metrics_flush_interval = "15s"
       namespace              = "traces.spanmetrics"
+      resource_metrics_key_attributes = ["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]
 
       output {
         metrics = [otelcol.exporter.prometheus.default.input]
@@ -305,6 +313,9 @@ data:
 
     otelcol.connector.servicegraph "default" {
       dimensions = ["http.method", "http.target", "service.name"]
+      database_name_attributes = ["db.name"]
+      latency_histogram_buckets = ["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]
+      metrics_flush_interval = "15s"
 
       output {
         metrics = [otelcol.exporter.prometheus.default.input]
@@ -312,6 +323,8 @@ data:
     }
 
     otelcol.processor.batch "default" {
+      timeout          = "500ms"
+      send_batch_size  = 10000
       output {
         traces  = [otelcol.exporter.otlp.tempo.input]
         metrics = [otelcol.exporter.prometheus.default.input]
@@ -326,6 +339,11 @@ data:
       endpoint {
         url = "http://mimir-nginx.mimir.svc.cluster.local/api/v1/push"
       }
+      external_labels = {
+          "env"      = "production",
+          "region"   = "ap-southeast-1",
+          "cluster"  = "MillenniumFalcon",
+          }
     }
 
     otelcol.connector.spanlogs "default" {
@@ -353,10 +371,8 @@ data:
     }
 
     livedebugging {
-      enabled = true
+      enabled = false
     }
-
-
 
 
 

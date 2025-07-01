@@ -80,6 +80,7 @@ compactor:
       memory: 500Mi #2Gi
 
 distributor:
+  enabled: true
   podDisruptionBudget:
     maxUnavailable: 1
   replicas: 1 #12
@@ -203,6 +204,7 @@ minio:
   enabled: false
 
 overrides_exporter:
+  enabled: true
   replicas: 1
   podDisruptionBudget:
     maxUnavailable: 1
@@ -214,6 +216,7 @@ overrides_exporter:
       memory: 128Mi
 
 querier:
+  enabled: true
   replicas: 1 #4
   resources:
     limits:
@@ -235,6 +238,7 @@ query_frontend:
       memory: 500Mi #2Gi
 
 ruler:
+  enabled: true
   replicas: 1 #3
   podDisruptionBudget:
     maxUnavailable: 1
@@ -323,8 +327,8 @@ mimir:
       storage:
         backend: s3
         s3:
-          endpoint: s3.eu-central-1.amazonaws.com
-          region: eu-central-1
+          endpoint: s3.ap-southeast-1.amazonaws.com
+          region: ap-southeast-1
           insecure: false
     usage_stats:
       enabled: false
@@ -344,8 +348,8 @@ mimir:
       s3:
         # access_key_id: ${AWS_ACCESS_KEY_ID}
         bucket_name: bellatrix-loki-ruler
-        endpoint: s3.eu-central-1.amazonaws.com
-        # region: eu-central-1
+        endpoint: s3.ap-southeast-1.amazonaws.com
+        # region: ap-southeast-1
         insecure: false
         # secret_access_key: ${AWS_SECRET_ACCESS_KEY}
     blocks_storage:
@@ -541,7 +545,7 @@ mimir:
       max_label_names_per_series: 30
       max_label_names_per_info_series: 80
       max_metadata_length: 1024
-      max_global_series_per_user: 250000
+      max_global_series_per_user: 2500000
       max_native_histogram_buckets: 0
       max_exemplars_per_series_per_request: 0
       reduce_native_histogram_over_max_buckets: true
@@ -590,8 +594,8 @@ mimir:
       s3:
         # access_key_id: ${AWS_ACCESS_KEY_ID}
         bucket_name: bellatrix-loki-ruler
-        endpoint: s3.eu-central-1.amazonaws.com
-        # region: eu-central-1
+        endpoint: s3.ap-southeast-1.amazonaws.com
+        # region: ap-southeast-1
         insecure: false
         # secret_access_key: ${AWS_SECRET_ACCESS_KEY}
     runtime_config:

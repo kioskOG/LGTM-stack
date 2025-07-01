@@ -15,7 +15,7 @@ loki:
             period: 24h
     storage_config:
       aws:
-        region: eu-central-1 # for example, eu-west-2  
+        region: ap-southeast-1 # for example, eu-west-2  
         bucketnames: bellatrix-loki-chunk # Your actual S3 bucket name, for example, loki-aws-dev-chunks
         s3forcepathstyle: false
     ingester:
@@ -23,23 +23,64 @@ loki:
     pattern_ingester:
         enabled: true
     limits_config:
+      ingestion_burst_size_mb: 6
+      ingestion_rate_mb: 4
+      max_global_streams_per_user: 15000
+      max_query_series: 500
+      reject_old_samples: false
+      reject_old_samples_max_age: 168h
+      retention_period: 24h
       allow_structured_metadata: true
       discover_log_levels: true
       volume_enabled: true
-      retention_period: 672h # 28 days retention
+      # retention_period: 672h # 28 days retention
     commonConfig:
       path_prefix: /var/loki
       replication_factor: 1
       compactor_address: '{{ include "loki.compactorAddress" . }}'
     compactor:
-      retention_enabled: true 
+      working_directory: /var/loki/compactor
+      retention_enabled: true
       delete_request_store: s3
+      compaction_interval: 10m
+      retention_delete_delay: 1h
+      retention_delete_worker_count: 150
+    distributor:
+      # Number of workers to push batches to ingesters.
+      push_worker_count: 256
+      rate_store:
+        # The max number of concurrent requests to make to ingester stream apis
+        max_request_parallelism: 200
+        # The interval on which distributors will update current stream rates from ingesters.
+        stream_rate_update_interval: 1s
+        # Timeout for communication between distributors and any given ingester when updating rates
+        ingester_request_timeout: 500ms
+        # If enabled, detailed logs and spans will be emitted.
+        debug: false
+        # Customize the logging of write failures.
+      write_failures_logging:
+        # Log volume allowed (per second). Default: 1KB.
+        rate: 2KB
+        # Whether a insight=true key should be logged or not. Default: false.
+        add_insights_label: false
+      otlp_config:
+        # List of default otlp resource attributes to be picked as index labels
+        default_resource_attributes_as_index_labels: [service.name service.namespace service.instance.id deployment.environment deployment.environment.name cloud.region cloud.availability_zone k8s.cluster.name k8s.namespace.name k8s.pod.name k8s.container.name container.name k8s.replicaset.name k8s.deployment.name k8s.statefulset.name k8s.daemonset.name k8s.cronjob.name k8s.job.name]
+      # Enable writes to Kafka during Push requests.
+      kafka_writes_enabled: false
+      # Enable writes to Ingesters during Push requests. Defaults to true.
+      ingester_writes_enabled: true
+      # Enable checking limits against the ingest-limits service. Defaults to false.
+      ingest_limits_enabled: false
+      # Enable dry-run mode where limits are checked the ingest-limits service, but not enforced. Defaults to false.
+      ingest_limits_dry_run_enabled: false
+
     ruler:
       enable_api: true
       storage:
         type: s3
         s3:
-          region: eu-central-1 # for example, eu-west-2
+          region: ap-southeast-1 # for example, eu-west-2
           bucketnames: bellatrix-loki-ruler # Your actual S3 bucket name, for example, loki-aws-dev-ruler
           s3forcepathstyle: false
         alertmanager_url: http://prom:9093 # The URL of the Alertmanager to send alerts (Prometheus, Mimir, etc.)
@@ -54,7 +95,7 @@ loki:
           ruler: "bellatrix-loki-ruler" # Your actual S3 bucket name (loki-aws-dev-ruler)
           # admin: "<Insert s3 bucket name>" # Your actual S3 bucket name (loki-aws-dev-admin) - GEL customers only
         s3:
-          region: eu-central-1 # eu-west-2
+          region: ap-southeast-1 # eu-west-2
           #insecure: false
         # s3forcepathstyle: false  
 
@@ -211,7 +252,297 @@ gateway:
  basicAuth: 
      enabled: true
      existingSecret: loki-basic-auth
+#  nginxConfig:
+#   # -- NGINX log format
+#   logFormat: |-
+#     main '$remote_addr - $remote_user [$time_local]  $status '
+#             '"$request" $body_bytes_sent "$http_referer" '
+#             '"$http_user_agent" "$http_x_forwarded_for"';
+#   # -- Allows appending custom configuration to the server block
+#   # -- Allows appending custom configuration to the server block
+#   serverSnippet: ''
+#   # -- Allows appending custom configuration to the http block
+#   httpSnippet: ''
+#   # -- Allows overriding the DNS resolver address nginx will use
+#   resolver: ''
+#   # -- Config file contents for Nginx. Passed through the `tpl` function to allow templating
+#   # @default -- See values.yaml
+#   file: |
+#     worker_processes  5;  ## Default: 1
+#     error_log  /dev/stderr;
+#     pid        /tmp/nginx.pid;
+#     worker_rlimit_nofile 8192;
 
+#     events {
+#       worker_connections  4096;  ## Default: 1024
+#     }
+#     http {
+#     client_body_temp_path /tmp/client_temp;
+#     proxy_temp_path       /tmp/proxy_temp_path;
+#     fastcgi_temp_path     /tmp/fastcgi_temp;
+#     uwsgi_temp_path       /tmp/uwsgi_temp;
+#     scgi_temp_path        /tmp/scgi_temp;
+
+#     client_max_body_size  {{ .Values.gateway.nginxConfig.clientMaxBodySize }};
+
+#     proxy_read_timeout    600; ## 10 minutes
+#     proxy_send_timeout    600;
+#     proxy_connect_timeout 600;
+
+#     proxy_http_version    1.1;
+
+#     default_type application/octet-stream;
+#     log_format   {{ .Values.gateway.nginxConfig.logFormat }}
+
+#     {{- if .Values.gateway.verboseLogging }}
+#     access_log   /dev/stderr  main;
+#     {{- else }}
+
+#     map $status $loggable {
+#       ~^[23]  0;
+#       default 1;
+#     }
+#     access_log   /dev/stderr  main  if=$loggable;
+#     {{- end }}
+
+#     sendfile     on;
+#     tcp_nopush   on;
+#     {{- if .Values.gateway.nginxConfig.resolver }}
+#     resolver {{ .Values.gateway.nginxConfig.resolver }};
+#     {{- else }}
+#     resolver {{ .Values.global.dnsService }}.{{ .Values.global.dnsNamespace }}.svc.{{ .Values.global.clusterDomain }}.;
+#     {{- end }}
+
+#     {{- with .Values.gateway.nginxConfig.httpSnippet }}
+#     {{- tpl . $ | nindent 2 }}
+#     {{- end }}
+
+#     server {
+#       {{- if (.Values.gateway.nginxConfig.ssl) }}
+#       listen             8080 ssl;
+#       {{- if .Values.gateway.nginxConfig.enableIPv6 }}
+#       listen             [::]:8080 ssl;
+#       {{- end }}
+#       {{- else }}
+#       listen             8080;
+#       {{- if .Values.gateway.nginxConfig.enableIPv6 }}
+#       listen             [::]:8080;
+#       {{- end }}
+#       {{- end }}
+
+#       {{- if .Values.gateway.basicAuth.enabled }}
+#       auth_basic           "Loki";
+#       auth_basic_user_file /etc/nginx/secrets/.htpasswd;
+#       {{- end }}
+
+#       location = / {
+#         return 200 'OK';
+#         auth_basic off;
+#       }
+
+#       ########################################################
+#       # Configure backend targets
+
+#       {{- $backendHost := include "loki.backendFullname" .}}
+#       {{- $readHost := include "loki.readFullname" .}}
+#       {{- $writeHost := include "loki.writeFullname" .}}
+
+#       {{- if .Values.read.legacyReadTarget }}
+#       {{- $backendHost = include "loki.readFullname" . }}
+#       {{- end }}
+
+#       {{- $httpSchema := .Values.gateway.nginxConfig.schema }}
+
+#       {{- $writeUrl    := printf "%s://%s.%s.svc.%s:%s" $httpSchema $writeHost   .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+#       {{- $readUrl     := printf "%s://%s.%s.svc.%s:%s" $httpSchema $readHost    .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+#       {{- $backendUrl  := printf "%s://%s.%s.svc.%s:%s" $httpSchema $backendHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+
+#       {{- if .Values.gateway.nginxConfig.customWriteUrl }}
+#       {{- $writeUrl  = .Values.gateway.nginxConfig.customWriteUrl }}
+#       {{- end }}
+#       {{- if .Values.gateway.nginxConfig.customReadUrl }}
+#       {{- $readUrl = .Values.gateway.nginxConfig.customReadUrl }}
+#       {{- end }}
+#       {{- if .Values.gateway.nginxConfig.customBackendUrl }}
+#       {{- $backendUrl = .Values.gateway.nginxConfig.customBackendUrl }}
+#       {{- end }}
+
+#       {{- $singleBinaryHost := include "loki.singleBinaryFullname" . }}
+#       {{- $singleBinaryUrl  := printf "%s://%s.%s.svc.%s:%s" $httpSchema $singleBinaryHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+
+#       {{- $distributorHost := include "loki.distributorFullname" .}}
+#       {{- $ingesterHost := include "loki.ingesterFullname" .}}
+#       {{- $queryFrontendHost := include "loki.queryFrontendFullname" .}}
+#       {{- $indexGatewayHost := include "loki.indexGatewayFullname" .}}
+#       {{- $rulerHost := include "loki.rulerFullname" .}}
+#       {{- $compactorHost := include "loki.compactorFullname" .}}
+#       {{- $schedulerHost := include "loki.querySchedulerFullname" .}}
+
+
+#       {{- $distributorUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $distributorHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) -}}
+#       {{- $ingesterUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $ingesterHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+#       {{- $queryFrontendUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $queryFrontendHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+#       {{- $indexGatewayUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $indexGatewayHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+#       {{- $rulerUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $rulerHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+#       {{- $compactorUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $compactorHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+#       {{- $schedulerUrl := printf "%s://%s.%s.svc.%s:%s" $httpSchema $schedulerHost .Release.Namespace .Values.global.clusterDomain (.Values.loki.server.http_listen_port | toString) }}
+
+#       {{- if eq (include "loki.deployment.isSingleBinary" .) "true"}}
+#       {{- $distributorUrl = $singleBinaryUrl }}
+#       {{- $ingesterUrl = $singleBinaryUrl }}
+#       {{- $queryFrontendUrl = $singleBinaryUrl }}
+#       {{- $indexGatewayUrl = $singleBinaryUrl }}
+#       {{- $rulerUrl = $singleBinaryUrl }}
+#       {{- $compactorUrl = $singleBinaryUrl }}
+#       {{- $schedulerUrl = $singleBinaryUrl }}
+#       {{- else if eq (include "loki.deployment.isScalable" .) "true"}}
+#       {{- $distributorUrl = $writeUrl }}
+#       {{- $ingesterUrl = $writeUrl }}
+#       {{- $queryFrontendUrl = $readUrl }}
+#       {{- $indexGatewayUrl = $backendUrl }}
+#       {{- $rulerUrl = $backendUrl }}
+#       {{- $compactorUrl = $backendUrl }}
+#       {{- $schedulerUrl = $backendUrl }}
+#       {{- end -}}
+
+#       {{- if .Values.loki.ui.gateway.enabled }}
+#       location ^~ /ui {
+#         proxy_pass       {{ $distributorUrl }}$request_uri;
+#       }
+#       {{- end }}
+
+#       # Distributor
+#       location = /api/prom/push {
+#         proxy_pass       {{ $distributorUrl }}$request_uri;
+#       }
+#       location = /loki/api/v1/push {
+#         proxy_pass       {{ $distributorUrl }}$request_uri;
+#       }
+#       location = /distributor/ring {
+#         proxy_pass       {{ $distributorUrl }}$request_uri;
+#       }
+#       location = /otlp/v1/logs {
+#         proxy_pass       {{ $distributorUrl }}$request_uri;
+#       }
+
+#       # Ingester
+#       location = /flush {
+#         proxy_pass       {{ $ingesterUrl }}$request_uri;
+#       }
+#       location ^~ /ingester/ {
+#         proxy_pass       {{ $ingesterUrl }}$request_uri;
+#       }
+#       location = /ingester {
+#         internal;        # to suppress 301
+#       }
+
+#       # Ring
+#       location = /ring {
+#         proxy_pass       {{ $ingesterUrl }}$request_uri;
+#       }
+
+#       # MemberListKV
+#       location = /memberlist {
+#         proxy_pass       {{ $ingesterUrl }}$request_uri;
+#       }
+
+#       # Ruler
+#       location = /ruler/ring {
+#         proxy_pass       {{ $rulerUrl }}$request_uri;
+#       }
+#       location = /api/prom/rules {
+#         proxy_pass       {{ $rulerUrl }}$request_uri;
+#       }
+#       location ^~ /api/prom/rules/ {
+#         proxy_pass       {{ $rulerUrl }}$request_uri;
+#       }
+#       location = /loki/api/v1/rules {
+#         proxy_pass       {{ $rulerUrl }}$request_uri;
+#       }
+#       location ^~ /loki/api/v1/rules/ {
+#         proxy_pass       {{ $rulerUrl }}$request_uri;
+#       }
+#       location = /prometheus/api/v1/alerts {
+#         proxy_pass       {{ $rulerUrl }}$request_uri;
+#       }
+#       location = /prometheus/api/v1/rules {
+#         proxy_pass       {{ $rulerUrl }}$request_uri;
+#       }
+
+#       # Compactor
+#       location = /compactor/ring {
+#         proxy_pass       {{ $compactorUrl }}$request_uri;
+#       }
+#       location = /loki/api/v1/delete {
+#         proxy_pass       {{ $compactorUrl }}$request_uri;
+#       }
+#       location = /loki/api/v1/cache/generation_numbers {
+#         proxy_pass       {{ $compactorUrl }}$request_uri;
+#       }
+
+#       # IndexGateway
+#       location = /indexgateway/ring {
+#         proxy_pass       {{ $indexGatewayUrl }}$request_uri;
+#       }
+
+#       # QueryScheduler
+#       location = /scheduler/ring {
+#         proxy_pass       {{ $schedulerUrl }}$request_uri;
+#       }
+
+#       # Config
+#       location = /config {
+#         proxy_pass       {{ $ingesterUrl }}$request_uri;
+#       }
+
+#       {{- if and .Values.enterprise.enabled .Values.enterprise.adminApi.enabled }}
+#       # Admin API
+#       location ^~ /admin/api/ {
+#         proxy_pass       {{ $backendUrl }}$request_uri;
+#       }
+#       location = /admin/api {
+#         internal;        # to suppress 301
+#       }
+#       {{- end }}
+
+
+#       # QueryFrontend, Querier
+#       location = /api/prom/tail {
+#         proxy_pass       {{ $queryFrontendUrl }}$request_uri;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection "upgrade";
+#       }
+#       location = /loki/api/v1/tail {
+#         proxy_pass       {{ $queryFrontendUrl }}$request_uri;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection "upgrade";
+#       }
+#       location ^~ /api/prom/ {
+#         proxy_pass       {{ $queryFrontendUrl }}$request_uri;
+#       }
+#       location = /api/prom {
+#         internal;        # to suppress 301
+#       }
+#       # if the X-Query-Tags header is empty, set a noop= without a value as empty values are not logged
+#       set $query_tags $http_x_query_tags;
+#       if ($query_tags !~* '') {
+#         set $query_tags "noop=";
+#       }
+#       location ^~ /loki/api/v1/ {
+#         # pass custom headers set by Grafana as X-Query-Tags which are logged as key/value pairs in metrics.go log messages
+#         proxy_set_header X-Query-Tags "${query_tags},user=${http_x_grafana_user},dashboard_id=${http_x_dashboard_uid},dashboard_title=${http_x_dashboard_title},panel_id=${http_x_panel_id},panel_title=${http_x_panel_title},source_rule_uid=${http_x_rule_uid},rule_name=${http_x_rule_name},rule_folder=${http_x_rule_folder},rule_version=${http_x_rule_version},rule_source=${http_x_rule_source},rule_type=${http_x_rule_type}";
+#         proxy_pass       {{ $queryFrontendUrl }}$request_uri;
+#       }
+#       location = /loki/api/v1 {
+#         internal;        # to suppress 301
+#       }
+
+#       {{- with .Values.gateway.nginxConfig.serverSnippet }}
+#       {{ . | nindent 4 }}
+#       {{- end }}
+#     }
+#     }
+    
 # Since we are using basic auth, we need to pass the username and password to the canary
 lokiCanary:
   enabled: true
@@ -389,4 +720,4 @@ rollout_operator:
     allowPrivilegeEscalation: false
 
 
-# helm upgrade --install loki grafana/loki -n loki --create-namespace --values "/Users/opstree/Documents/github.io/prometheus-grafana/loki/loki-override-values.yaml"
+# helm upgrade --install loki grafana/loki -n loki --create-namespace --values "./loki/loki-override-values.yaml"

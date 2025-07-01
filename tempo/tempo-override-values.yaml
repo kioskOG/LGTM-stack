@@ -125,8 +125,8 @@ storage:
     backend: s3
     s3:
       bucket: bellatrix-loki-chunk
-      endpoint: s3.eu-central-1.amazonaws.com
-      region: eu-central-1
+      endpoint: s3.ap-southeast-1.amazonaws.com
+      region: ap-southeast-1
       insecure: false
     pool:
       max_workers: 400
