@@ -91,6 +91,18 @@ distributor:
       cpu: 1 #2
       memory: 1Gi #4Gi
 
+# https://grafana.com/docs/mimir/latest/manage/run-production-environment/planning-capacity/#ingester
+# For Ingester Estimated required CPU, memory, and disk space:
+
+# CPU: 1 core for every 300,000 series in memory
+# Memory: 2.5GB for every 300,000 series in memory
+# Disk space: 5GB for every 300,000 series in memory
+# How to estimate the number of series in memory:
+# Query the number of active series across all your Prometheus servers:
+# sum(prometheus_tsdb_head_series)
+# Check the configured -ingester.ring.replication-factor (defaults to 3)
+# Estimate the total number of series in memory across all ingesters using the following formula:
+# total number of in-memory series = <active series> * <replication factor>
 ingester:
   enabled: true
   replicas: 2
@@ -357,6 +369,7 @@ mimir:
         bucket_name: bellatrix-loki-chunk
       bucket_store:
         sync_dir: /data/tsdb-sync
+        ignore_blocks_within: 10h0m0s
         chunks_cache:
           backend: memcached
           memcached:
@@ -430,7 +443,9 @@ mimir:
       start_time_quiet_zero: false
 
     frontend:
+      log_queries_longer_than: 0s
       max_body_size: 10485760
+      split_queries_by_interval: 24h
       query_stats_enabled: true
       parallelize_shardable_queries: true
       results_cache:
@@ -499,6 +514,20 @@ mimir:
       active_series_metrics_update_period: 1m0s
       active_series_metrics_idle_timeout: 20m0s
       tsdb_config_update_period: 15s
+      # Enable and configure the Push Circuit Breaker
+      push_circuit_breaker:
+        enabled: true
+        thresholding_period: 2m               # Calculate failure rate over 2 minutes
+        failure_threshold_percentage: 15      # Open if >15% of pushes fail
+        cooldown_period: 30s                  # Stay open for 30 seconds
+        request_timeout: 5s                   # Timeout push requests after 5 seconds
+      # Enable and configure the Read Circuit Breaker
+      read_circuit_breaker:
+        enabled: true
+        thresholding_period: 1m               # Calculate failure rate over 1 minute
+        failure_threshold_percentage: 20      # Open if >20% of reads fail
+        cooldown_period: 15s                  # Stay open for 15 seconds
+        request_timeout: 45s                  # Timeout read requests after 45 seconds
       instance_limits:
         max_ingestion_rate: 0
         max_tenants: 0
@@ -539,6 +568,7 @@ mimir:
       ingestion_burst_size: 1000000 # Typically 10-20x ingestion_rate
       request_rate: 0
       request_burst_size: 0
+      query_ingesters_within: 13h
       out_of_order_time_window: 5m
       max_label_name_length: 1024
       max_label_value_length: 2048
@@ -602,6 +632,10 @@ mimir:
       file: /var/mimir/runtime.yaml
     server:
       grpc_server_max_concurrent_streams: 1000
+      log_source_ips_enabled: true
+      # log_source_ips_header: "X-Custom-Client-IP" # Uncomment and modify if needed
+      # log_source_ips_regex: "^([^,]+)" # Uncomment and modify if needed
+      # log_source_ips_full: true # Uncomment if you want all IPs
     store_gateway:
       sharding_ring:
         heartbeat_period: 1m

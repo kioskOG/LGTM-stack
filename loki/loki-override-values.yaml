@@ -21,7 +21,7 @@ loki:
   ingester:
       chunk_encoding: snappy
   pattern_ingester:
-      enabled: true
+    enabled: true
   limits_config:
     ingestion_burst_size_mb: 6
     ingestion_rate_mb: 4
@@ -140,6 +140,23 @@ ingester:
   zoneAwareReplication:
     enabled: false
     maxUnavailablePct: 33 # -- The percent of replicas in each zone that will be restarted at once. In a value of 0-100
+
+patternIngester:
+  # -- Number of replicas for the pattern ingester
+  replicas: 1
+  image:
+    registry: docker.io
+    repository: grafana/loki
+    tag: 3.5.1
+    pullPolicy: IfNotPresent
+  serviceLabels:
+    release: kube-prometheus-stack
+  persistence:
+    enabled: true
+    size: 2Gi #10Gi
+    accessModes:
+      - ReadWriteOnce
+    storageClass: gp2-standard
 
 #querier
 querier:

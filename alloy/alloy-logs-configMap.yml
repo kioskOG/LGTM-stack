@@ -47,7 +47,7 @@ data:
       }
 
       rule {
-        source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_name"]
+        source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
         separator     = "/"
         target_label  = "job"
       }
@@ -226,7 +226,13 @@ data:
       stage.static_labels {
         values = {
           cluster     = "MillenniumFalcon",
-          event_type  = "kubernetes",
+          // event_type  = "kubernetes",
+        }
+      }
+
+      stage.labels {
+        values = {
+          kubernetes_cluster_events = "job",
         }
       }
 

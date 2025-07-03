@@ -11,7 +11,7 @@ tempo:
     registry: docker.io
     pullSecrets: []
     repository: grafana/tempo
-    tag: 2.7.2
+    tag: 2.8.1
     pullPolicy: IfNotPresent
   readinessProbe:
     httpGet:
@@ -50,7 +50,7 @@ ingester:
     pullSecrets: []
     registry: docker.io
     repository: grafana/tempo
-    tag: 2.7.2
+    tag: 2.8.1
   terminationGracePeriodSeconds: 300
   persistence:
     enabled: true
@@ -179,7 +179,7 @@ metricsGenerator:
     pullSecrets: []
     registry: docker.io
     repository: grafana/tempo
-    tag: 2.7.2
+    tag: 2.8.1
   registry:
     external_labels:
       source: tempo
@@ -277,7 +277,7 @@ distributor:
     pullSecrets: []
     registry: docker.io
     repository: grafana/tempo
-    tag: 2.7.2
+    tag: 2.8.1
   service:
     annotations: {}
     labels: {}
@@ -337,7 +337,7 @@ compactor:
     pullSecrets: []
     registry: docker.io
     repository: grafana/tempo
-    tag: 2.7.2
+    tag: 2.8.1
   maxUnavailable: 1
   minReadySeconds: 10
   config:
@@ -372,7 +372,7 @@ querier:
     pullSecrets: []
     registry: docker.io
     repository: grafana/tempo
-    tag: 2.7.2
+    tag: 2.8.1
     maxUnavailable: 1
     maxSurge: 0
     config:
@@ -451,7 +451,7 @@ queryFrontend:
     pullSecrets: []
     registry: docker.io
     repository: grafana/tempo
-    tag: 2.7.2
+    tag: 2.8.1
   service:
     # -- Port of the query-frontend service
     port: 16686
@@ -816,3 +816,8 @@ gateway:
 
 
 # helm upgrade --install tempo grafana/tempo-distributed -n tempo --create-namespace -f tempo/tempo-override-values.yaml
+
+
+#TraceQL
+
+# { resource.service.name="otel-python-app" } with (most_recent=true)
