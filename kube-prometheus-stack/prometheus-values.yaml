@@ -1521,6 +1521,10 @@ grafana:
         access: proxy
         uid: mimir
         url: http://mimir-nginx.mimir.svc.cluster.local/prometheus
+        basicAuth: true
+        basicAuthUser: mimir-nginx
+        secureJsonData:
+          basicAuthPassword: mimir-nginx
         isDefault: false
         editable: true
       - name: Loki # (name of the data source)
@@ -1565,6 +1569,17 @@ grafana:
     portName: http-web
     ipFamilies: []
     ipFamilyPolicy: ""
+  
+  # service:
+  #   type: LoadBalancer
+  #   portName: http-web
+  #   port: 80
+  #   targetPort: 3000
+  #   loadBalancerIP: ""  # optional: static IP if your cloud provider supports it
+  #   loadBalancerSourceRanges: [] # e.g. ["0.0.0.0/0"]
+  #   externalTrafficPolicy: Local # optional
+  #   sessionAffinity: None # ClientIP
+
 
   serviceMonitor:
     # If true, a ServiceMonitor CRD is created for a prometheus operator
@@ -3640,7 +3655,7 @@ prometheus:
     enabled: true
     annotations: {}
     labels: {}
-    clusterIP: ""
+    clusterIP: "" # loadBalancerIP
     ipDualStack:
       enabled: false
       ipFamilies: ["IPv6", "IPv4"]
@@ -4407,6 +4422,13 @@ prometheus:
           batch_send_deadline: 5s
           max_shards: 10
           capacity: 50000
+        basicAuth:
+          username:
+            name: mimir-remote-write-credentials # Name of the secret
+            key: username                     # Key within the secret for username
+          password:
+            name: mimir-remote-write-credentials # Name of the secret
+            key: password                     # Key within the secret for password
         # write_relabel_configs:
         # drop specific metrics from remote-write
         # - source_labels: ['__name__']

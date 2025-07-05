@@ -165,7 +165,7 @@ data:
       }
 
       stage.match {
-        selector = "{namespace=~\"(monitoring|default)\"}"
+        selector = "{namespace=~\"(monitoring|default|loki|mimir)\"}"
         stage.regex {
           expression = "(?P<method>GET|PUT|DELETE|POST)"
         }
@@ -344,6 +344,9 @@ data:
     prometheus.remote_write "mimir" {
       endpoint {
         url = "http://mimir-nginx.mimir.svc.cluster.local/api/v1/push"
+        headers = {
+          "Authorization" = "Basic bWltaXItbmdpbng6bWltaXItbmdpbng=",
+        }
       }
       external_labels = {
           "env"      = "production",

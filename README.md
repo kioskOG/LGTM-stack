@@ -146,7 +146,7 @@ htpasswd -c .htpasswd <username>
 ```
 
 > [!NOTE]
-> This will create a file called `auth` with the username you enterned. You will be prompted to enter a password.
+> This will create a file called `auth` with the username you enterned. You will be prompted to enter a password. I am keeping the password as `loki-canary` .
 
 2. Create a Kubernetes secret with the .htpasswd file:
 ```bash
@@ -417,6 +417,43 @@ Amazon_EBS_CSI_Driver                 Inline Policy
     ]
 }
 ```
+
+
+### Mimir Basic Authentication
+
+Mimir by default does not come with any authentication. Since we will be deploying Mimir to AWS and exposing the gateway to the internet near future, as of now we aren't exposing it to internet, I recommend adding at least basic authentication. In this guide we will give Mimir a `username` and `password`:
+
+1. To start we will need create a `.htpasswd` file with the `username` and `password`. You can use the `htpasswd` command to create the file:
+
+```bash
+cd mimir
+htpasswd -c .htpasswd mimir-nginx
+```
+
+> [!IMPORTANT]
+> [!NOTE]
+> This will create a file called `auth` with the username you enterned. You will be prompted to enter a password. I am keeping the password as `mimir-nginx` .
+
+2. Create a Kubernetes secret with the .htpasswd file:
+```bash
+kubectl create secret generic mimir-basic-auth --from-file=.htpasswd -n mimir
+```
+
+This will create a secret called mimir-basic-auth in the mimir namespace. We will reference this secret in the Mimir Helm chart configuration.
+
+
+I have used username & password as `mimir-nginx`.
+
+you can find the mimir helm chart values under mimir directory.
+
+
+Once this is done, apply below config in `monitoring` **namespace** where we are running prometheus.
+
+```bash
+kubectl apply -f mimir/mimir-secret-for-prometheus.yaml
+```
+
+It will create a secret in `monitoring` **namespace** named `mimir-remote-write-credentials`
 
 
 > [!NOTE]
