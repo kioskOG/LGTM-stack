@@ -1,4 +1,16 @@
 loki:
+  rulerConfig:
+    remote_write:
+      client:
+        url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+      enabled: true
+    rule_path: /var/loki/rules
+    storage:
+      local:
+        directory: /var/loki/rules
+      type: local
+    wal:
+      dir: /var/loki/ruler/wal
   image:
     registry: docker.io
     repository: grafana/loki
@@ -250,6 +262,13 @@ ruler:
     repository: grafana/loki
     tag: 3.5.1
     pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    size: 1Gi #10Gi
+    mountPath: /var/loki
+    accessModes:
+      - ReadWriteOnce
+    storageClass: gp2-standard
 
 
 # This exposes the Loki gateway so it can be written to and queried externaly

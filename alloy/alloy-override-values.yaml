@@ -28,6 +28,42 @@ alloy:
     name: alloy-config
     # -- Key in ConfigMap to get config from.
     key: config.alloy
+  
+  # https://grafana.com/docs/alloy/latest/get-started/clustering/#do-not-enable-clustering-when-you-dont-need-it
+  clustering:
+    # -- Deploy Alloy in a cluster to allow for load distribution.
+    enabled: false
+
+    # -- Name for the Alloy cluster. Used for differentiating between clusters.
+    name: ""
+
+    # -- Name for the port used for clustering, useful if running inside an Istio Mesh
+    portName: http
+
+  # -- Minimum stability level of components and behavior to enable. Must be
+  # one of "experimental", "public-preview", or "generally-available".
+  stabilityLevel: "generally-available"
+
+  # -- Path to where Grafana Alloy stores data (for example, the Write-Ahead Log).
+  # By default, data is lost between reboots.
+  storagePath: /tmp/alloy
+
+  # -- Address to listen for traffic on. 0.0.0.0 exposes the UI to other
+  # containers.
+  listenAddr: 0.0.0.0
+
+  # -- Port to listen for traffic on.
+  listenPort: 12345
+
+  # -- Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS"
+  listenScheme: HTTP
+
+  # --  Base path where the UI is exposed.
+  uiPathPrefix: /
+
+  # -- Enables sending Grafana Labs anonymous usage stats to help improve Grafana
+  # Alloy.
+  enableReporting: false
 
   mounts:
     # -- Mount /var/log from the host into the container for log collection.
@@ -44,7 +80,15 @@ alloy:
   securityContext: {}
 
   # -- Resource requests and limits to apply to the Grafana Alloy container.
-  resources: {}
+  resources: 
+    resources:
+      limits:
+        # cpu: "500m"
+        memory: "500Mi"
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+
 
   # -- Set lifecycle hooks for the Grafana Alloy container.
   lifecycle: {}
@@ -55,7 +99,15 @@ alloy:
     #     - "10"
 
   # -- Set livenessProbe for the Grafana Alloy container.
-  livenessProbe: {}
+  livenessProbe:
+    httpGet:
+      path: /-/healthy
+      port: 12345
+    readinessProbe:
+      httpGet:
+        path: /-/ready
+        port: 12345
+
 
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
