@@ -102,7 +102,12 @@ data:
           __path__  = "/var/log/syslog",
           job       = "node/syslog",
           node_name = sys.env("HOSTNAME"),
-          cluster   = "MillenniumFalcon",
+          cluster     = sys.env("KUBE_CLUSTER_NAME"),
+          environment = sys.env("ENVIRONMENT_NAME"),
+          region      = sys.env("AWS_REGION"),
+          cloud       = sys.env("CLOUD_PROVIDER"),
+          platform    = sys.env("PLATFORM_TYPE"),
+          node        = sys.env("KUBE_NODE_NAME"),
       }]
     }
 
@@ -135,11 +140,12 @@ data:
     loki.process "pod_logs" {
       stage.static_labels {
         values = {
-          cluster     = "MillenniumFalcon",
-          environment = "production",
-          region      = "ap-southeast-1",
-          cloud       = "aws",
-          platform    = "eks",
+          cluster     = sys.env("KUBE_CLUSTER_NAME"),
+          environment = sys.env("ENVIRONMENT_NAME"),
+          region      = sys.env("AWS_REGION"),
+          cloud       = sys.env("CLOUD_PROVIDER"),
+          platform    = sys.env("PLATFORM_TYPE"),
+          node        = sys.env("KUBE_NODE_NAME"),
         }
       }
 
@@ -281,11 +287,12 @@ data:
         }
       }
       external_labels = {
-          environment = "production",
-          region      = "ap-southeast-1",
-          cluster     = "MillenniumFalcon",
-          cloud       = "aws",
-          platform    = "eks",
+          cluster     = sys.env("KUBE_CLUSTER_NAME"),
+          environment = sys.env("ENVIRONMENT_NAME"),
+          region      = sys.env("AWS_REGION"),
+          cloud       = sys.env("CLOUD_PROVIDER"),
+          platform    = sys.env("PLATFORM_TYPE"),
+          node        = sys.env("KUBE_NODE_NAME"),
           }
     }
 
@@ -303,14 +310,9 @@ data:
         endpoint = "0.0.0.0:4317"
       }
       http {}
-
       output {
-        traces = [
-          otelcol.processor.k8sattributes.default.input,
-          otelcol.connector.spanlogs.default.input,
-          otelcol.connector.spanmetrics.default.input,
-          otelcol.connector.servicegraph.default.input,
-        ]
+        traces  = [otelcol.processor.resourcedetection.eks.input]
+        metrics = [otelcol.processor.resourcedetection.eks.input]
       }
     }
 
@@ -333,7 +335,13 @@ data:
       }
 
       output {
-        traces = [otelcol.processor.batch.default.input]
+        traces  = [
+          otelcol.processor.batch.default.input,
+          otelcol.connector.spanlogs.default.input,
+          otelcol.connector.spanmetrics.default.input,
+          otelcol.connector.servicegraph.default.input,
+        ]
+        metrics = [otelcol.processor.batch.default.input]
       }
     }
 
@@ -377,7 +385,7 @@ data:
     }
 
     otelcol.processor.batch "default" {
-      timeout          = "500ms"
+      timeout          = "2s"
       send_batch_size  = 10000
       output {
         traces  = [otelcol.exporter.otlp.tempo.input]
@@ -397,9 +405,12 @@ data:
         }
       }
       external_labels = {
-          "env"      = "production",
-          "region"   = "ap-southeast-1",
-          "cluster"  = "MillenniumFalcon",
+          cluster     = sys.env("KUBE_CLUSTER_NAME"),
+          environment = sys.env("ENVIRONMENT_NAME"),
+          region      = sys.env("AWS_REGION"),
+          cloud       = sys.env("CLOUD_PROVIDER"),
+          platform    = sys.env("PLATFORM_TYPE"),
+          node        = sys.env("KUBE_NODE_NAME"),
           }
     }
 

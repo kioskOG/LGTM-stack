@@ -65,6 +65,24 @@ alloy:
   # Alloy.
   enableReporting: false
 
+  # -- Extra environment variables to pass to the Alloy container.
+  extraEnv:
+    - name: KUBE_CLUSTER_NAME
+      value: "MillenniumFalcon"
+    - name: ENVIRONMENT_NAME
+      value: "Production"
+    - name: AWS_REGION
+      value: "ap-southeast-1"
+    - name: CLOUD_PROVIDER
+      value: "aws"
+    - name: PLATFORM_TYPE
+      value: "eks"
+    # Make sure to include the HOSTNAME env var if you were relying on it for node_name
+    - name: KUBE_NODE_NAME # This replaces the `HOSTNAME` env var from previous config
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+
   mounts:
     # -- Mount /var/log from the host into the container for log collection.
     varlog: true
@@ -80,14 +98,13 @@ alloy:
   securityContext: {}
 
   # -- Resource requests and limits to apply to the Grafana Alloy container.
-  resources: 
-    resources:
-      limits:
-        # cpu: "500m"
-        memory: "500Mi"
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
+  resources:
+    limits:
+      # cpu: "500m"
+      memory: "500Mi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
 
 
   # -- Set lifecycle hooks for the Grafana Alloy container.
@@ -103,10 +120,10 @@ alloy:
     httpGet:
       path: /-/healthy
       port: 12345
-    readinessProbe:
-      httpGet:
-        path: /-/ready
-        port: 12345
+  readinessProbe:
+    httpGet:
+      path: /-/ready
+      port: 12345
 
 
 image:
@@ -203,7 +220,8 @@ service:
 serviceMonitor:
   enabled: true
   # -- Additional labels for the service monitor.
-  additionalLabels: {}
+  additionalLabels:
+    release: kube-prometheus-stack
   # -- Scrape interval. If not set, the Prometheus default scrape interval is used.
   interval: ""
   # -- MetricRelabelConfigs to apply to samples after scraping, but before ingestion.

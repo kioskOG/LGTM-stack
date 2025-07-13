@@ -1504,6 +1504,9 @@ grafana:
             spanStartTimeShift: '-1h'
             spanEndTimeShift: '1h'
             tags: [{ key: 'service.name', value: 'service_name' }]
+          tracesToProfiles:
+            datasourceUid: "pyroscope"
+            tags: [{ key: 'service.name', value: 'service_name' }]
           streamingEnabled:
             search: true
           traceQuery:
@@ -1543,6 +1546,15 @@ grafana:
         editable: true
         jsonData:
           httpHeaderName1: "X-Scope-OrgID" # (header name for the organization ID)
+      - name: Pyroscope
+        type: grafana-pyroscope-datasource
+        access: proxy
+        uid: pyroscope
+        url: http://pyroscope-query-frontend.pyroscope.svc.cluster.local:4040
+        isDefault: false
+        editable: true
+        jsonData:
+          minStep: '15s'
           
   # - name: prometheus-sample
   #   access: proxy

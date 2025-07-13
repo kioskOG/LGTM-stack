@@ -8,6 +8,8 @@ NAMESPACE_tempo = tempo
 NAMESPACE_alloy = alloy-logs
 NAMESPACE_mimir = mimir
 NAMESPACE_kube-prometheus-stack = monitoring
+NAMESPACE_pyroscope = pyroscope
+NAMESPACE_blackbox = monitoring
 
 # -------------------------------------
 # Chart sources
@@ -17,6 +19,8 @@ CHART_tempo = grafana/tempo-distributed
 CHART_alloy = grafana/alloy
 CHART_mimir = grafana/mimir-distributed
 CHART_kps   = ./kube-prometheus-stack
+CHART_pyroscope = grafana/pyroscope
+CHART_blackbox = prometheus-community/prometheus-blackbox-exporter
 
 # -------------------------------------
 # Chart versions
@@ -25,6 +29,8 @@ VERSION_loki  = 6.30.1
 VERSION_tempo = 1.42.2
 VERSION_alloy = 1.1.1
 VERSION_mimir = 5.7.0
+VERSION_pyroscope = 1.14.0
+VERSION_blackbox = 11.0.0
 
 # -------------------------------------
 # Values files
@@ -34,6 +40,8 @@ VALUES_tempo = ./tempo/tempo-override-values.yaml
 VALUES_alloy = ./alloy/alloy-override-values.yaml
 VALUES_mimir = ./mimir/mimir-override-values.yaml
 VALUES_kps   = ./kube-prometheus-stack/prometheus-values.yaml
+VALUES_pyroscope = ./pyroscope/pyroscope-values.yaml
+VALUES_blackbox = ./blackbox-exporter/values.yaml
 
 
 # -------------------------------------
@@ -46,7 +54,7 @@ init:
 	@helm repo update
 
 	@echo "👉 Ensuring required namespaces exist..."
-	@for ns in $(NAMESPACE_loki) $(NAMESPACE_tempo) $(NAMESPACE_alloy) $(NAMESPACE_mimir) $(NAMESPACE_kube-prometheus-stack); do \
+	@for ns in $(NAMESPACE_loki) $(NAMESPACE_tempo) $(NAMESPACE_alloy) $(NAMESPACE_mimir) $(NAMESPACE_kube-prometheus-stack) $(NAMESPACE_pyroscope) $(NAMESPACE_blackbox); do \
 		if ! kubectl get namespace $$ns > /dev/null 2>&1; then \
 			echo "✅ Creating namespace: $$ns"; \
 			kubectl create namespace $$ns; \
@@ -113,6 +121,20 @@ install-kube-prometheus-stack:
 		--values $(VALUES_kps) \
 		--debug
 
+install-pyroscope:
+	helm upgrade --install pyroscope $(CHART_pyroscope) \
+		--version $(VERSION_pyroscope) \
+		-n $(NAMESPACE_pyroscope) \
+		--values $(VALUES_pyroscope) \
+		--debug
+
+install-blackbox:
+	helm upgrade --install prometheus-blackbox-exporter $(CHART_blackbox) \
+		--version $(VERSION_blackbox) \
+		-n $(NAMESPACE_blackbox) \
+		--values $(VALUES_blackbox) \
+		--debug
+
 # -------------------------------------
 # Uninstall Targets
 
@@ -121,9 +143,17 @@ uninstall:
 	helm uninstall tempo -n $(NAMESPACE_tempo) || true
 	helm uninstall mimir -n $(NAMESPACE_mimir) || true
 	helm uninstall kube-prometheus-stack -n $(NAMESPACE_kube-prometheus-stack) || true
+	helm uninstall pyroscope -n $(NAMESPACE_pyroscope) || true
+	helm uninstall prometheus-blackbox-exporter -n $(NAMESPACE_blackbox) || true
 
 uninstall-alloy:
 	helm uninstall grafana-alloy -n $(NAMESPACE_alloy) || true
+
+uninstall-blackbox:
+	helm uninstall prometheus-blackbox-exporter -n $(NAMESPACE_blackbox) || true
+
+uninstall-pyroscope:
+	helm uninstall pyroscope -n $(NAMESPACE_pyroscope) || true
 
 # Extra cleanup
 
@@ -144,6 +174,8 @@ uninstall-cleanup:
 	-kubectl delete pvc -n $(NAMESPACE_loki) --all --force || true
 	-kubectl delete pvc -n $(NAMESPACE_tempo) --all --force || true
 	-kubectl delete pvc -n $(NAMESPACE_kube-prometheus-stack) --all --force || true
+	-kubectl delete pvc -n $(NAMESPACE_pyroscope) --all --force || true
+	-kubectl delete pvc -n $(NAMESPACE_blackbox) --all --force || true
 
 	@echo "🗑 Deleting Namespaces..."
 	-kubectl delete namespace $(NAMESPACE_loki) --force || true
@@ -151,9 +183,11 @@ uninstall-cleanup:
 	-kubectl delete namespace $(NAMESPACE_alloy) --force || true
 	-kubectl delete namespace $(NAMESPACE_mimir) --force || true
 	-kubectl delete namespace $(NAMESPACE_kube-prometheus-stack) --force || true
+	-kubectl delete namespace $(NAMESPACE_pyroscope) --force || true
+	-kubectl delete namespace $(NAMESPACE_blackbox) --force || true
 	@echo "✅ Cleanup done."
 
-uninstall-all: uninstall uninstall-alloy uninstall-cleanup
+uninstall-all: uninstall uninstall-alloy uninstall-pyroscope uninstall-blackbox uninstall-cleanup
 
 
 # -------------------------------------
@@ -178,10 +212,10 @@ template-debug-%:
 # -------------------------------------
 # Batch commands
 
-install: init install-mimir install-kube-prometheus-stack install-loki install-tempo install-alloy
-status: status-loki status-tempo status-alloy status-mimir status-kube-prometheus-stack
-logs: logs-loki logs-tempo logs-alloy logs-mimir logs-kube-prometheus-stack
-template-debug: template-debug-loki template-debug-tempo template-debug-alloy template-debug-mimir template-debug-kube-prometheus-stack
+install: init install-mimir install-kube-prometheus-stack install-loki install-tempo install-alloy install-pyroscope install-blackbox
+status: status-loki status-tempo status-alloy status-mimir status-kube-prometheus-stack status-pyroscope status-blackbox
+logs: logs-loki logs-tempo logs-alloy logs-mimir logs-kube-prometheus-stack logs-pyroscope logs-blackbox
+template-debug: template-debug-loki template-debug-tempo template-debug-alloy template-debug-mimir template-debug-kube-prometheus-stack template-debug-pyroscope template-debug-blackbox
 
 # -------------------------------------
 
