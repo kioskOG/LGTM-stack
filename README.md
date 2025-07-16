@@ -1,3 +1,25 @@
+<div align="center"> 
+  <h1>🚀 LGTM stack on Kubernetes Complete Hands‑On Guides 🌟 </h1>
+  <a href="https://github.com/kioskOG/LGTM-stack"><img src="https://readme-typing-svg.demolab.com?font=italic&weight=700&size=18&duration=4000&pause=1000&color=F727A9&center=true&width=600&lines=+-+Run+complete+LGTM+Stack+on+Kubernetes+for+observability." alt="Typing SVG" /> </a>  
+  <br>
+    <img src="https://img.shields.io/github/forks/kioskOG/LGTM-stack" alt="Forks"/>
+  <img src="https://img.shields.io/github/stars/kioskOG/LGTM-stack" alt="Stars"/>
+  <img src="https://img.shields.io/github/watchers/kioskOG/LGTM-stack" alt="Watchers"/>
+  <img src="https://img.shields.io/github/last-commit/kioskOG/LGTM-stack" alt="Last Commit"/>
+  <img src="https://img.shields.io/github/commit-activity/m/kioskOG/LGTM-stack" alt="Commit Activity"/>
+  <img src="https://img.shields.io/github/repo-size/kioskOG/LGTM-stack" alt="Repo Size"/>
+  <img src="https://img.shields.io/static/v1?label=%F0%9F%8C%9F&message=If%20Useful&style=style=flat&color=BC4E99" alt="Star Badge"/>
+
+  <!-- <img src="https://awesome.re/badge.svg" alt="Awesome"/> -->
+  <a href="https://github.com/kioskOG/LGTM-stack/blob/main/LICENSE"> <img src="https://img.shields.io/github/license/kioskOG/LGTM-stack" alt="GitHub License"/> </a>
+  <a href="https://github.com/kioskOG/LGTM-stack/graphs/contributors"> <img src="https://img.shields.io/github/contributors/kioskOG/LGTM-stack" alt="GitHub contributors"/> </a>
+  <a href="https://github.com/kioskOG/LGTM-stack/issues">  <img src="https://img.shields.io/github/issues/kioskOG/LGTM-stack" alt="Open Issues"/> </a>
+  <a href="https://github.com/kioskOG/LGTM-stack/pulls"> <img src="https://img.shields.io/github/issues-pr-raw/kioskOG/LGTM-stack" alt="Open PRs"/> </a>
+  <a href="https://github.com/kioskOG/LGTM-stack/pulls"> <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt="PRs Welcome"/> </a>
+  </div>
+
+---
+
 # LGTM-stack
 
 
