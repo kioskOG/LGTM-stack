@@ -193,7 +193,9 @@ you can find the loki helm chart values under loki directory.
 
 > [!IMPORTANT]
 >
-> helm upgrade --install loki grafana/loki -n loki --create-namespace --values "<path-of-loki-override-values.yaml>"
+> ```bash
+>helm upgrade --install loki grafana/loki -n loki --create-namespace --values "<path-of-loki-override-values.yaml>"
+>```
 
 4. Verify the deployment:
 
@@ -505,7 +507,7 @@ helm upgrade --install tempo grafana/tempo-distributed -n tempo --create-namespa
 
 
 > [!IMPORTANT]
-> # If you wanna use Makefile for the same
+> # If you wanna use Makefile for the deployments. Create the AWS resources first.
 
 
 ## ✅ How to Run
