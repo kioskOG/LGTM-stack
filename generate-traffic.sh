@@ -38,3 +38,4 @@ send_requests "$url2" "$file2" &
 wait
  
 echo "Requests sent and status codes logged."
+
