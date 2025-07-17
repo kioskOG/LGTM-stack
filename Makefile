@@ -62,7 +62,7 @@ init:
 			echo "⚙️  Namespace $$ns already exists. Skipping."; \
 		fi \
 	done
-    
+
 	@echo "👉 Ensuring Mimir basic auth secret for Nginx ingress is applied..."
 	@kubectl create secret generic mimir-basic-auth --from-file=mimir/.htpasswd -n mimir --dry-run=client -o yaml | kubectl apply -f -
 
@@ -137,6 +137,27 @@ install-blackbox:
 
 # -------------------------------------
 # Uninstall Targets
+uninstall-loki:
+	helm uninstall loki -n $(NAMESPACE_loki) || true
+
+uninstall-tempo:
+	helm uninstall tempo -n $(NAMESPACE_tempo) || true
+
+uninstall-mimir:
+	helm uninstall mimir -n $(NAMESPACE_mimir) || true
+
+uninstall-kube-prometheus-stack:
+	helm uninstall kube-prometheus-stack -n $(NAMESPACE_kube-prometheus-stack) || true
+
+uninstall-alloy:
+	helm uninstall grafana-alloy -n $(NAMESPACE_alloy) || true
+
+uninstall-blackbox:
+	helm uninstall prometheus-blackbox-exporter -n $(NAMESPACE_blackbox) || true
+
+
+uninstall-pyroscope:
+	helm uninstall pyroscope -n $(NAMESPACE_pyroscope) || true
 
 uninstall:
 	helm uninstall loki -n $(NAMESPACE_loki) || true
@@ -146,14 +167,6 @@ uninstall:
 	helm uninstall pyroscope -n $(NAMESPACE_pyroscope) || true
 	helm uninstall prometheus-blackbox-exporter -n $(NAMESPACE_blackbox) || true
 
-uninstall-alloy:
-	helm uninstall grafana-alloy -n $(NAMESPACE_alloy) || true
-
-uninstall-blackbox:
-	helm uninstall prometheus-blackbox-exporter -n $(NAMESPACE_blackbox) || true
-
-uninstall-pyroscope:
-	helm uninstall pyroscope -n $(NAMESPACE_pyroscope) || true
 
 # Extra cleanup
 
