@@ -137,6 +137,18 @@ install-blackbox:
 		--values $(VALUES_blackbox) \
 		--debug
 
+
+# -------------------------------------
+# Port-forward Targets
+pf-grafana:
+	kubectl port-forward svc/kube-prometheus-stack-grafana -n $(NAMESPACE_kube-prometheus-stack) 3000:80
+
+pf-prometheus:
+	kubectl port-forward svc/kube-prometheus-stack-prometheus -n $(NAMESPACE_kube-prometheus-stack) 9090
+
+pf-alloy:
+	kubectl port-forward svc/grafana-alloy -n $(NAMESPACE_alloy) 12345
+
 # -------------------------------------
 # Uninstall Targets
 uninstall-loki:
@@ -227,7 +239,7 @@ template-debug-%:
 # -------------------------------------
 # Batch commands
 
-install: init install-mimir install-kube-prometheus-stack install-loki install-tempo install-alloy install-pyroscope #install-blackbox
+install: init install-mimir install-kube-prometheus-stack install-loki install-tempo install-alloy install-pyroscope install-blackbox
 status: status-loki status-tempo status-alloy status-mimir status-kube-prometheus-stack status-pyroscope status-blackbox
 logs: logs-loki logs-tempo logs-alloy logs-mimir logs-kube-prometheus-stack logs-pyroscope logs-blackbox
 template-debug: template-debug-loki template-debug-tempo template-debug-alloy template-debug-mimir template-debug-kube-prometheus-stack template-debug-pyroscope template-debug-blackbox
@@ -242,8 +254,8 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  make init                  - Add Helm repos and create namespaces"
-	@echo "  make install               - Install all components (Loki, Tempo, Alloy, Mimir, KPS)"
-	@echo "  make uninstall             - Uninstall Loki, Tempo, Mimir, KPS"
+	@echo "  make install               - Install all components (loki, tempo, alloy, mimir, kube-prometheus-stack)"
+	@echo "  make uninstall             - Uninstall loki, tempo, mimir, kube-prometheus-stack"
 	@echo "  make uninstall-alloy       - Uninstall Alloy separately"
 	@echo "  make uninstall-cleanup     - Delete Secrets, ConfigMap, Namespaces"
 	@echo "  make uninstall-all         - Uninstall everything + cleanup"
