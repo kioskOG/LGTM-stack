@@ -1,18 +1,16 @@
-## Rideshare Golang Push Example
+# Ridershare go app
 
-This is a copy of
-https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/golang-push
-to demonstrate the GitHub integration.
+```bash
+docker build -t <repo>/<image_name>:<version> .
 
-To run the example run the following commands:
-
+docker push <repo>/<image_name>:<version>
 ```
-# Pull latest pyroscope image:
-docker pull grafana/pyroscope:latest
 
-# Run the example project:
-docker-compose up
+> [!NOTE] change the image name in rider-go.yaml
+> ```bash
+> vim rider-go.yaml
+> ```
 
-# Reset the database (if needed):
-# docker-compose down
+```bash
+kubectl apply -f rider-go.yaml
 ```
