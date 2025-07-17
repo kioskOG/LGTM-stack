@@ -521,4 +521,6 @@ make uninstall-alloy          # Uninstall Alloy
 make status-mimir             # Get Mimir status
 make logs-tempo               # Tail Tempo logs
 make template-debug-loki      # Render Loki manifests
+make pf-grafana               # port forward to grafana service
 ```
+
