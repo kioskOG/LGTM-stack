@@ -98,9 +98,16 @@ alloy:
     # -- Extra volume mounts to add into the Grafana Alloy container. Does not
     # affect the watch container.
     extra: []
+      # - name: varlogjournal
+      #   mountPath: /var/log/journal
+      #   readOnly: true
 
   # -- Security context to apply to the Grafana Alloy container.
-  securityContext: {}
+  # We are running this in privilege mode due to ebpf profiling.
+  securityContext:
+    privileged: true
+    runAsGroup: 0
+    runAsUser: 0
 
   # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources:
@@ -189,6 +196,7 @@ configReloader:
 controller:
   # -- Type of controller to use for deploying Grafana Alloy in the cluster.
   # Must be one of 'daemonset', 'deployment', or 'statefulset'.
+  hostPID: true
   type: 'daemonset'
 
   # -- Number of pods to deploy. Ignored when controller.type is 'daemonset'.
@@ -204,6 +212,10 @@ controller:
   volumes:
     # -- Extra volumes to add to the Grafana Alloy pod.
     extra: []
+      # - name: varlogjournal
+      #   hostPath:
+      #     path: /var/log/journal
+
 
   # -- Additional containers to run alongside the Alloy container and initContainers.
   extraContainers: []
