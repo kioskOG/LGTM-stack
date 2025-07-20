@@ -72,6 +72,13 @@ data:
         replacement   = "$1"
         target_label  = "tmp_container_runtime"
       }
+
+      // Drop pods in terminal phases to reduce noise & resource usage
+      rule {
+        action        = "drop"
+        regex         = "Succeeded|Failed|Completed"
+        source_labels = ["__meta_kubernetes_pod_phase"]
+      }
     }
 
     // configuring Alloy to collect its own telemetry and forward it to the mimir backend.
@@ -83,7 +90,7 @@ data:
     }
 
     logging {
-      level    = "warn"
+      level    = "info"
       format   = "json"
       write_to = [loki.write.loki.receiver]
     }
@@ -121,6 +128,7 @@ data:
     // Node journald logs from Amazon Linux 2 (EKS)
     loki.relabel "journal" {
       forward_to = [loki.write.loki.receiver]
+
       rule {
         action = "labelmap"
         regex  = "__journal__(.+)"
@@ -506,7 +514,7 @@ data:
     }
 
     otelcol.processor.batch "default" {
-      timeout          = "2s"
+      timeout          = "5s"
       send_batch_size  = 10000
       output {
         traces  = [otelcol.exporter.otlp.tempo.input]

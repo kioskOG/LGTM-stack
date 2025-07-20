@@ -186,18 +186,26 @@ pyroscope:
         requests:
           memory: 1Gi #8Gi
           cpu: 250m #1
+      persistence:
+        enabled: false
+        accessModes:
+          - ReadWriteOnce
+        size: 5Gi
     compactor:
       kind: StatefulSet
       replicaCount: 1 #3
       terminationGracePeriodSeconds: 1200
-      persistence:
-        enabled: false
       resources:
         limits:
           memory: 1Gi #16Gi
         requests:
           memory: 1Gi #8Gi
           cpu: 250m #1
+      persistence:
+        enabled: false
+        accessModes:
+          - ReadWriteOnce
+        size: 5Gi
     store-gateway:
       kind: StatefulSet
       replicaCount: 1 #3
@@ -283,7 +291,7 @@ serviceMonitor:
 
 # https://github.com/grafana/pyroscope/tree/main/examples
 
-
+# https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/helm/#optional-scrape-your-own-workloads-profiles
 
 
 #   {

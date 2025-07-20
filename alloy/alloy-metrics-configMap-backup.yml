@@ -120,6 +120,7 @@ data:
 
     // Node journald logs from Amazon Linux 2 (EKS)
     loki.relabel "journal" {
+      forward_to = [loki.write.loki.receiver]
       rule {
         action = "labelmap"
         regex  = "__journal__(.+)"

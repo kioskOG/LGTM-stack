@@ -1310,6 +1310,7 @@ grafana:
     # https://grafana.com/api/plugins
   plugins:
     - grafana-exploretraces-app
+    # - grafana-investigations-app
 
   operator:
     ## Enable references to ConfigMaps containing dashboards in GrafanaDashboard CRs
@@ -1417,7 +1418,7 @@ grafana:
       searchNamespace: ALL
 
       # Support for new table panels, when enabled grafana auto migrates the old table panels to newer table panels
-      enableNewTablePanelSyntax: false
+      enableNewTablePanelSyntax: true
 
       ## Annotations for Grafana dashboard configmaps
       ##
@@ -1426,9 +1427,9 @@ grafana:
         global:
           enabled: false
         etcd:
-          enabled: false
+          enabled: true
       provider:
-        allowUiUpdates: false
+        allowUiUpdates: true
     datasources:
       enabled: true
       defaultDatasourceEnabled: true
@@ -4347,7 +4348,7 @@ prometheus:
 
     ## How long to retain metrics
     ##
-    retention: 15d
+    retention: 5d #15d
 
     ## Maximum size of metrics
     ##
@@ -4465,6 +4466,12 @@ prometheus:
     ## Resource limits & requests
     ##
     resources: {}
+      # requests:
+      #   cpu: 500m
+      #   memory: 2Gi
+      # limits:
+      #   cpu: 2
+      #   memory: 8Gi
     # requests:
     #   memory: 400Mi
 
