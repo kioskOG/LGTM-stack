@@ -50,6 +50,10 @@ VALUES_blackbox = ./blackbox-exporter/values.yaml
 # Helm repo & namespace bootstrap
 
 init:
+    #@./script.sh
+
+	@kubectl apply -f ./default_storage_class.yaml
+
 	@echo "👉 Adding Helm repo if missing and updating..."
 	@helm repo add grafana https://grafana.github.io/helm-charts || true
 	@helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
