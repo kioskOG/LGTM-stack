@@ -34,8 +34,8 @@ loki:
           period: 24h
   storage_config:
     aws:
-      region: ap-southeast-1 # for example, eu-west-2  
-      bucketnames: bellatrix-loki-chunk # Your actual S3 bucket name, for example, loki-aws-dev-chunks
+      region: "${region_name}" # for example, eu-west-2  
+      bucketnames: "${env_loki_chunk_bucket}" # Your actual S3 bucket name, for example, loki-aws-dev-chunks
       s3forcepathstyle: false
   ingester:
       chunk_encoding: snappy
@@ -102,8 +102,8 @@ loki:
     storage:
       type: s3
       s3:
-        region: ap-southeast-1 # for example, eu-west-2
-        bucketnames: bellatrix-loki-ruler # Your actual S3 bucket name, for example, loki-aws-dev-ruler
+        region: "${region_name}" # for example, eu-west-2
+        bucketnames: "${env_loki_ruler_bucket}" # Your actual S3 bucket name, for example, loki-aws-dev-ruler
         s3forcepathstyle: false
       alertmanager_url: http://prom:9093 # The URL of the Alertmanager to send alerts (Prometheus, Mimir, etc.)
 
@@ -113,11 +113,11 @@ loki:
   storage:
       type: s3
       bucketNames:
-        chunks: "bellatrix-loki-chunk" # Your actual S3 bucket name (loki-aws-dev-chunks)
-        ruler: "bellatrix-loki-ruler" # Your actual S3 bucket name (loki-aws-dev-ruler)
+        chunks: "${region_name}" # Your actual S3 bucket name (loki-aws-dev-chunks)
+        ruler: "${env_loki_ruler_bucket}" # Your actual S3 bucket name (loki-aws-dev-ruler)
         # admin: "<Insert s3 bucket name>" # Your actual S3 bucket name (loki-aws-dev-admin) - GEL customers only
       s3:
-        region: ap-southeast-1 # eu-west-2
+        region: "${region_name}" # eu-west-2
         #insecure: false
       # s3forcepathstyle: false  
 
@@ -137,7 +137,7 @@ loki:
 serviceAccount:
  create: true
  annotations:
-   "eks.amazonaws.com/role-arn": "arn:aws:iam::547580490325:role/LokiServiceAccountRole" # The service role you created
+   "eks.amazonaws.com/role-arn": "${loki_role_arn}" # The service role you created
 
 deploymentMode: Distributed
 

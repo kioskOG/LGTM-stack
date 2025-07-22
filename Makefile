@@ -42,7 +42,7 @@ VALUES_tempo = ./tempo/tempo-override-values.yaml
 VALUES_alloy = ./alloy/alloy-override-values.yaml
 VALUES_mimir = ./mimir/mimir-override-values.yaml
 VALUES_kps   = ./kube-prometheus-stack/prometheus-values.yaml
-VALUES_pyroscope = ./pyroscope/pyroscope-values.yaml
+VALUES_pyroscope = ./pyroscope/pyroscope-override-values.yaml
 VALUES_blackbox = ./blackbox-exporter/values.yaml
 
 
@@ -50,9 +50,9 @@ VALUES_blackbox = ./blackbox-exporter/values.yaml
 # Helm repo & namespace bootstrap
 
 init:
-    #@./script.sh
+	@./script.sh
 
-	@kubectl apply -f ./default_storage_class.yaml
+	@kubectl apply -f ./default-storage-class.yaml
 
 	@echo "👉 Adding Helm repo if missing and updating..."
 	@helm repo add grafana https://grafana.github.io/helm-charts || true
