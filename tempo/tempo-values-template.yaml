@@ -118,15 +118,15 @@ serviceAccount:
  create: true
  name: tempo
  annotations:
-   "eks.amazonaws.com/role-arn": "arn:aws:iam::547580490325:role/MimirServiceAccountRole" # The service role you created
+   "eks.amazonaws.com/role-arn": "${tempo_role_arn}" # The service role you created
 
 storage:
   trace:
     backend: s3
     s3:
-      bucket: bellatrix-loki-chunk
-      endpoint: s3.ap-southeast-1.amazonaws.com
-      region: ap-southeast-1
+      bucket: ${env_tempo_chunk_bucket}
+      endpoint: s3.${region_name}.amazonaws.com
+      region: ${region_name}
       insecure: false
     pool:
       max_workers: 400

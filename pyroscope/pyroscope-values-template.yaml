@@ -6,9 +6,9 @@ pyroscope:
     storage:
       backend: s3
       s3:
-        bucket_name: bellatrix-loki-chunk
-        endpoint: s3.ap-southeast-1.amazonaws.com
-        region: ap-southeast-1
+        bucket_name: ${env_pyroscope_chunk_bucket}
+        endpoint: s3.${region_name}.amazonaws.com
+        region: ${region_name}
     server:
       http_listen_network: tcp
       # gRPC
@@ -86,7 +86,7 @@ pyroscope:
     create: true
     name: pyroscope
     annotations:
-      "eks.amazonaws.com/role-arn": "arn:aws:iam::547580490325:role/MimirServiceAccountRole" # The service role you created
+      "eks.amazonaws.com/role-arn": "${pyroscope_role_arn}" # The service role you created
     
   image:
     repository: grafana/pyroscope
