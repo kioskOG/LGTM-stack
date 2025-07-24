@@ -3,12 +3,21 @@
 set -euo pipefail
 export AWS_PAGER=""
 
+
+# Colors for output
+RED='\033[0;31m'      # Red
+GREEN='\033[0;32m'    # Green
+YELLOW='\033[0;33m'   # Yellow
+BLUE='\033[0;34m'     # Blue
+NC='\033[0m'          # No Color (reset)
+
+
 function prompt_input() {
   local var_name="$1"
   local prompt="$2"
   local default="$3"
 
-  read -p "$prompt [$default]: " input
+  read -p "$(echo -e "${BLUE}${prompt} [${default}]: ${NC}")" input
   input="${input:-$default}"
   export $var_name="$input"
 }
@@ -21,10 +30,10 @@ function create_s3_bucket_if_not_exists() {
   local bucket="$1"
   local region="$2"
   if bucket_exists "$bucket"; then
-    echo "✔️  Bucket '$bucket' already exists, skipping..."
+    echo -e "${GREEN}✔️  Bucket '$bucket' already exists, skipping...${NC}"
   else
     aws s3 mb "s3://$bucket" --region "$region"
-    echo "🪣 Created bucket: $bucket"
+    echo -e "${YELLOW}🪣 Created bucket: $bucket${NC}"
   fi
 }
 
@@ -33,10 +42,10 @@ function create_policy_if_not_exists() {
   local file="$2"
 
   if aws iam list-policies --scope Local --query "Policies[?PolicyName=='${name}'] | [0]" --output text | grep -q "${name}"; then
-    echo "✔️  IAM Policy '$name' already exists, skipping..."
+    echo -e "${GREEN}✔️  IAM Policy '$name' already exists, skipping...${NC}"
   else
     aws iam create-policy --policy-name "$name" --policy-document file://"$file"
-    echo "📜 Created IAM Policy: $name"
+    echo -e "${YELLOW}📜 Created IAM Policy: $name${NC}"
   fi
 }
 
@@ -45,10 +54,10 @@ function create_role_if_not_exists() {
   local file="$2"
 
   if aws iam get-role --role-name "$name" >/dev/null 2>&1; then
-    echo "✔️  Role '$name' already exists, skipping..."
+    echo -e "${GREEN}✔️  Role '$name' already exists, skipping...${NC}"
   else
     aws iam create-role --role-name "$name" --assume-role-policy-document file://"$file"
-    echo "🔐 Created IAM Role: $name"
+    echo -e "${YELLOW}🔐 Created IAM Role: $name${NC}"
   fi
 }
 
@@ -58,16 +67,16 @@ function attach_policy_if_not_attached() {
   local policy_arn="arn:aws:iam::${account_id}:policy/${policy_name}"
 
   if aws iam list-attached-role-policies --role-name "$role" | grep -q "$policy_name"; then
-    echo "✔️  Policy $policy_name already attached to $role"
+    echo -e "${GREEN}✔️  Policy $policy_name already attached to $role${NC}"
   else
     aws iam attach-role-policy --role-name "$role" --policy-arn "$policy_arn"
-    echo "📌 Attached policy $policy_name to $role"
+    echo -e "${YELLOW}📌 Attached policy $policy_name to $role${NC}"
   fi
 }
 
 ### -------------------------------------------------------------
 # Start Script
-echo "🧠 Providing Cluster & Region Info"
+echo -e "${BLUE}🧠 Providing Cluster & Region Info${NC}"
 prompt_input cluster_name "Enter your EKS cluster name" "my-cluster"
 export cluster_name="$cluster_name"
 export cluster_name_lower=$(echo "$cluster_name" | tr '[:upper:]' '[:lower:]')
@@ -78,7 +87,7 @@ prompt_input region_name "Enter AWS region (same as cluster region)" "ap-southea
 ### Export variables used later
 export cluster_name region_name
 
-echo "🪣 Gathering S3 bucket input for monitoring components"
+echo -e "${BLUE}🪣 Gathering S3 bucket input for monitoring components${NC}"
 
 prompt_input loki_chunk_bucket "Enter S3 bucket name for Loki chunks" "loki-chunks"
 export env_loki_chunk_bucket="${cluster_name_lower}-${loki_chunk_bucket}"
@@ -97,7 +106,7 @@ prompt_input pyroscope_chunk_bucket "Enter S3 bucket name for Pyroscope chunks" 
 export env_pyroscope_chunk_bucket="${cluster_name_lower}-${pyroscope_chunk_bucket}"
 
 ### Create Buckets
-echo "🚀 Creating or verifying S3 buckets..."
+echo -e "${BLUE}🚀 Creating or verifying S3 buckets...${NC}"
 
 create_s3_bucket_if_not_exists "$env_loki_chunk_bucket" "$region_name"
 create_s3_bucket_if_not_exists "$env_loki_ruler_bucket" "$region_name"
@@ -108,7 +117,7 @@ create_s3_bucket_if_not_exists "$env_pyroscope_chunk_bucket" "$region_name"
 
 ### -------------------------------------------------------------
 # IAM Setup
-echo "🔍 Fetching AWS Account ID & EKS OIDC Provider Info"
+echo -e "${BLUE}🔍 Fetching AWS Account ID & EKS OIDC Provider Info${NC}"
 account_id=$(aws sts get-caller-identity --query "Account" --output text)
 idp_id=$(aws eks describe-cluster --name "${cluster_name}" --region "${region_name}" \
   --query "cluster.identity.oidc.issuer" --output text | awk -F '/' '{print $NF}')
@@ -312,26 +321,24 @@ export pyroscope_role_arn=$(aws iam get-role --role-name PyroscopeServiceAccount
 
 ### -------------------------------------------------------------
 # Generate final override values from template
-echo "📦 Generating Helm override values..."
+echo -e "${BLUE}📦 Generating Helm override values...${NC}"
 envsubst < ./loki/loki-values-template.yaml > ./loki/loki-override-values.yaml
 envsubst < ./mimir/mimir-values-template.yaml > ./mimir/mimir-override-values.yaml
 envsubst < ./tempo/tempo-values-template.yaml > ./tempo/tempo-override-values.yaml
 envsubst < ./pyroscope/pyroscope-values-template.yaml > ./pyroscope/pyroscope-override-values.yaml
 
-echo "📄 Generated override YAMLs:"
+echo -e "${GREEN}📄 Generated override YAMLs:${NC}"
 ls -1 ./loki/*override-values.yaml ./mimir/*override-values.yaml ./tempo/*override-values.yaml ./pyroscope/*override-values.yaml
 
 
 ### -------------------------------------------------------------
 # Final Summary
 echo ""
-echo "✅ IAM Role ARNs created for usage:"
+echo -e "${GREEN}✅ IAM Role ARNs created for usage:${NC}"
 echo "  Loki     : $loki_role_arn"
 echo "  Mimir    : $mimir_role_arn"
 echo "  Tempo    : $tempo_role_arn"
 echo "  Pyroscope: $pyroscope_role_arn"
 
-
-echo -e "\n🎉 All AWS resources created or verified."
-echo "🚀 You can now install Helm charts using the generated override files."
-
+echo -e "${GREEN}\n🎉 All AWS resources created or verified."
+echo -e "🚀 You can now install Helm charts using the generated override files.${NC}"
