@@ -103,7 +103,7 @@ install-tempo:
 install-alloy:
 	@if ! kubectl get configmap alloy-config -n $(NAMESPACE_alloy) > /dev/null 2>&1; then \
 		echo "📦 Applying alloy ConfigMap..."; \
-		kubectl apply -f ./alloy/alloy-logs-configMap.yml; \
+		kubectl apply -f ./alloy/alloy-configMap.yml; \
 	else \
 		echo "✅ ConfigMap 'alloy-config' already exists. Skipping apply."; \
 	fi
