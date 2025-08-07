@@ -1229,7 +1229,7 @@ grafana:
     # -- Docker image repository
     repository: grafana/grafana
     # Overrides the Grafana image tag whose default is the chart appVersion
-    tag: "12.0.2"
+    tag: "12.1.0" #"12.0.2"
 
   ## ForceDeployDatasources Create datasource configmap even if grafana deployment has been disabled
   ##
@@ -1276,7 +1276,9 @@ grafana:
       disable_login: false
       disable_signout_menu: false
     feature_toggles:
-      enable: "traceqlEditor,tempoServiceGraph,newNavigation,traceToMetrics,provisioning,kubernetesClientDashboardsFolders,kubernetesDashboards,grafanaAPIServerEnsureKubectlAccess"
+      enable: "traceqlEditor,tempoServiceGraph,newNavigation,traceToMetrics,provisioning,kubernetesClientDashboardsFolders,kubernetesDashboards,grafanaAPIServerEnsureKubectlAccess,investigations"
+    plugins:
+      allow_loading_unsigned_plugins: grafana-investigations-app
   #   auth.generic_oauth:
   #     verbose_logging: true
   #     enabled: true
@@ -1310,7 +1312,7 @@ grafana:
     # https://grafana.com/api/plugins
   plugins:
     - grafana-exploretraces-app
-    # - grafana-investigations-app
+    - grafana-investigations-app
 
   operator:
     ## Enable references to ConfigMaps containing dashboards in GrafanaDashboard CRs
